@@ -1,3 +1,6 @@
 [submodule "specs"]
 	path = specs
 	url = git@github.com:onvif/specs.git
+[submodule "onvif"]
+	path = onvif
+	url = git@github.com:onvif/specs.git
