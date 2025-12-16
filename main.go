@@ -32,6 +32,7 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(requestLogger())
 	router.POST("/onvif/device_service", deviceServiceHandler())
+	router.POST("/onvif/media2_service", media2ServiceHandler())
 
 	router.NoRoute(func(c *gin.Context) {
 		appLogger.Warn("NoRoute hit", "method", c.Request.Method, "path", c.Request.URL.Path)
@@ -155,13 +156,32 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
+					<tt:Major>1</tt:Major>
+					<tt:Minor>0</tt:Minor>
+				</tds:Version>
+				<tds:Capabilities>
+					<tds:Capabilities>
+						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="false" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
+						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="true" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="200" />
+						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="false" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" CloudFirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
+						<tds:Misc AuxiliaryCommands="" />
+					</tds:Capabilities>
+				</tds:Capabilities>
+			</tds:Service>
+			<tds:Service>
+				<tds:Namespace>%s</tds:Namespace>
+				<tds:XAddr>%s</tds:XAddr>
+				<tds:Version>
 					<tt:Major>2</tt:Major>
 					<tt:Minor>0</tt:Minor>
 				</tds:Version>
+				<tds:Capabilities>
+				
+				</tds:Capabilities>
 			</tds:Service>
 		</tds:GetServicesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, media2Namespace, xAddr)
+</s:Envelope>`)
 }
 
 func buildGetCapabilitiesResponse(scheme, host string) string {
@@ -224,10 +244,52 @@ func buildGetUsersResponse() string {
 			<tds:User>
 				<tt:Username>flock</tt:Username>
 				<tt:UserLevel>User</tt:UserLevel>
+				
 			</tds:User>
 		</tds:GetUsersResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
+}
+
+func buildGetAudioOutputConfigurationsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<tr2:GetAudioOutputConfigurationsResponse xmlns:tr2="%s" xmlns:tt="%s">
+			<tr2:Configurations/>
+		</tr2:GetAudioOutputConfigurationsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, media2Namespace, ttNamespace)
+}
+
+func buildGetAudioSourcesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<tr2:GetAudioSourcesResponse xmlns:tr2="%s" xmlns:tt="%s">
+			<tr2:AudioSources/>
+		</tr2:GetAudioSourcesResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, media2Namespace, ttNamespace)
+}
+
+func buildGetVideoSourcesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<tr2:GetVideoSourcesResponse xmlns:tr2="%s" xmlns:tt="%s">
+			<tr2:VideoSources>
+				<tt:VideoSource token="938c2c2e-e083-4494-8090-568373dc9e92">
+					<tt:Framerate>20.0</tt:Framerate>
+					<tt:Resolution>
+						<tt:Width>1920</tt:Width>
+						<tt:Height>1080</tt:Height>
+					</tt:Resolution>
+				</tt:VideoSource>
+			</tr2:VideoSources>
+		</tr2:GetVideoSourcesResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, media2Namespace, ttNamespace)
 }
 
 func requestScheme(c *gin.Context) string {
@@ -244,4 +306,37 @@ func requestScheme(c *gin.Context) string {
 	}
 
 	return "http"
+}
+
+func media2ServiceHandler() gin.HandlerFunc {
+	const (
+		getAudioOutputConfigurationsAction = "GetAudioOutputConfigurations"
+		getAudioSourcesAction              = "GetAudioSources"
+		getVideoSourcesAction              = "GetVideoSources"
+	)
+
+	return func(c *gin.Context) {
+		var envelope soapEnvelope
+		if err := xml.NewDecoder(c.Request.Body).Decode(&envelope); err != nil {
+			appLogger.Warn("failed to parse media2 request", "err", err)
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		bodyContent := strings.TrimSpace(envelope.Body.Raw)
+		switch {
+		case strings.Contains(bodyContent, getAudioOutputConfigurationsAction):
+			payload := buildGetAudioOutputConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioSourcesAction):
+			payload := buildGetAudioSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoSourcesAction):
+			payload := buildGetVideoSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		default:
+			appLogger.Warn("media2 request action not recognized", "body", bodyContent)
+			c.Status(http.StatusBadRequest)
+		}
+	}
 }
