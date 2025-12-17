@@ -18,7 +18,7 @@ const (
 	port            = 8081
 	soapNamespace   = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace    = "http://www.onvif.org/ver10/device/wsdl"
-	media2Namespace = "http://www.onvif.org/ver20/media/wsdl"
+	tr2Namespace    = "http://www.onvif.org/ver20/media/wsdl"
 	ttNamespace     = "http://www.onvif.org/ver10/schema"
 	soapContentType = "application/soap+xml; charset=utf-8"
 )
@@ -146,7 +146,8 @@ func deviceServiceHandler() gin.HandlerFunc {
 }
 
 func buildGetServicesResponse(scheme, host string) string {
-	xAddr := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
+	deviceAddress := fmt.Sprintf("%s://%s/onvif/device_service", scheme, host)
+	media2Address := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
@@ -156,14 +157,14 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>1</tt:Major>
-					<tt:Minor>0</tt:Minor>
+					<tt:Major>25</tt:Major>
+					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
 					<tds:Capabilities>
-						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="false" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
-						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="true" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="200" />
-						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="false" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" CloudFirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
+						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
+						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
+						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="false" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
 						<tds:Misc AuxiliaryCommands="" />
 					</tds:Capabilities>
 				</tds:Capabilities>
@@ -172,16 +173,21 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>2</tt:Major>
-					<tt:Minor>0</tt:Minor>
+					<tt:Major>25</tt:Major>
+					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
-				
+					<tr2:Capabilities xmlns:tr2="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
+						<tr2:ProfileCapabilities MaximumNumberOfProfiles="1" ConfigurationsSupported="VideoSource,VideoEncoder" />
+						<tr2:StreamingCapabilities RTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" SecureRTSPStreaming="true" />
+						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
+						<tr2:AudioClipCapabilities MaxAudioClipLimit="0" MaxAudioClipSize="0" SupportedAudioClipFormat="" />
+					</tr2:Capabilities>
 				</tds:Capabilities>
 			</tds:Service>
 		</tds:GetServicesResponse>
 	</s:Body>
-</s:Envelope>`)
+</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, tdsNamespace, deviceAddress, tr2Namespace, media2Address, tr2Namespace)
 }
 
 func buildGetCapabilitiesResponse(scheme, host string) string {
@@ -215,7 +221,24 @@ func buildGetNetworkInterfacesResponse() string {
 <s:Envelope xmlns:s="%s">
 	<s:Body>
 		<tds:GetNetworkInterfacesResponse xmlns:tds="%s" xmlns:tt="%s">
-			<tds:NetworkInterfaces/>
+			<tds:NetworkInterfaces token="eth0">
+				<tt:Enabled>true</tt:Enabled>
+        <tt:Info>
+          <tt:Name>eth0</tt:Name>
+          <tt:HwAddress>02:01:23:45:67:89</tt:HwAddress>
+          <tt:MTU>1500</tt:MTU>
+        </tt:Info>
+        <tt:IPv4>
+          <tt:Enabled>true</tt:Enabled>
+          <tt:Config>
+            <tt:Manual>
+              <tt:Address>192.168.0.100</tt:Address>
+              <tt:PrefixLength>24</tt:PrefixLength>
+            </tt:Manual>
+            <tt:DHCP>false</tt:DHCP>
+          </tt:Config>
+        </tt:IPv4>
+			</tds:NetworkInterfaces>
 		</tds:GetNetworkInterfacesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
@@ -244,7 +267,6 @@ func buildGetUsersResponse() string {
 			<tds:User>
 				<tt:Username>flock</tt:Username>
 				<tt:UserLevel>User</tt:UserLevel>
-				
 			</tds:User>
 		</tds:GetUsersResponse>
 	</s:Body>
@@ -259,7 +281,7 @@ func buildGetAudioOutputConfigurationsResponse() string {
 			<tr2:Configurations/>
 		</tr2:GetAudioOutputConfigurationsResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, media2Namespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
 }
 
 func buildGetAudioSourcesResponse() string {
@@ -270,7 +292,7 @@ func buildGetAudioSourcesResponse() string {
 			<tr2:AudioSources/>
 		</tr2:GetAudioSourcesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, media2Namespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
 }
 
 func buildGetVideoSourcesResponse() string {
@@ -289,7 +311,7 @@ func buildGetVideoSourcesResponse() string {
 			</tr2:VideoSources>
 		</tr2:GetVideoSourcesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, media2Namespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
 }
 
 func requestScheme(c *gin.Context) string {
