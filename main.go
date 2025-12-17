@@ -32,7 +32,7 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(requestLogger())
 	router.POST("/onvif/device_service", deviceServiceHandler())
-	router.POST("/onvif/media2_service", media2ServiceHandler())
+	// router.POST("/onvif/media2_service", media2ServiceHandler())
 
 	router.NoRoute(func(c *gin.Context) {
 		appLogger.Warn("NoRoute hit", "method", c.Request.Method, "path", c.Request.URL.Path)
@@ -104,6 +104,7 @@ func deviceServiceHandler() gin.HandlerFunc {
 		getCapabilitiesAction      = "GetCapabilities"
 		getNetworkInterfacesAction = "GetNetworkInterfaces"
 		getDeviceInfoAction        = "GetDeviceInformation"
+		getNetworkProtocolsAction  = "GetNetworkProtocols"
 		getUsersAction             = "GetUsers"
 	)
 
@@ -134,6 +135,9 @@ func deviceServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getDeviceInfoAction):
 			payload := buildGetDeviceInformationResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getNetworkProtocolsAction):
+			payload := buildGetNetworkProtocolsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getUsersAction):
 			payload := buildGetUsersResponse()
@@ -271,6 +275,26 @@ func buildGetUsersResponse() string {
 		</tds:GetUsersResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
+}
+
+func buildGetNetworkProtocolsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<tds:GetNetworkProtocolsResponse xmlns:tds="%s" xmlns:tt="%s">
+			<tds:NetworkProtocols>
+				<tt:Name>HTTPS</tt:Name>
+				<tt:Enabled>true</tt:Enabled>
+				<tt:Port>%d</tt:Port>
+			</tds:NetworkProtocols>
+			<tds:NetworkProtocols>
+				<tt:Name>RTSP</tt:Name>
+				<tt:Enabled>true</tt:Enabled>
+				<tt:Port>554</tt:Port>
+			</tds:NetworkProtocols>
+		</tds:GetNetworkProtocolsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, port)
 }
 
 func buildGetAudioOutputConfigurationsResponse() string {
