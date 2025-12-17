@@ -15,12 +15,17 @@ import (
 )
 
 const (
-	port            = 8081
-	soapNamespace   = "http://www.w3.org/2003/05/soap-envelope"
-	tdsNamespace    = "http://www.onvif.org/ver10/device/wsdl"
-	tr2Namespace    = "http://www.onvif.org/ver20/media/wsdl"
-	ttNamespace     = "http://www.onvif.org/ver10/schema"
-	soapContentType = "application/soap+xml; charset=utf-8"
+	port                    = 8081
+	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
+	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
+	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
+	trtNamespace            = "http://www.onvif.org/ver10/media/wsdl"
+	ttNamespace             = "http://www.onvif.org/ver10/schema"
+	soapContentType         = "application/soap+xml; charset=utf-8"
+	videoSourceToken        = "938c2c2e-e083-4494-8090-568373dc9e92"
+	profileToken            = "profile-1"
+	videoSourceConfigToken  = "video-source-config-1"
+	videoEncoderConfigToken = "video-encoder-config-1"
 )
 
 var appLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -32,7 +37,8 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(requestLogger())
 	router.POST("/onvif/device_service", deviceServiceHandler())
-	// router.POST("/onvif/media2_service", media2ServiceHandler())
+	router.POST("/onvif/media_service", mediaServiceHandler())
+	router.POST("/onvif/media2_service", media2ServiceHandler())
 
 	router.NoRoute(func(c *gin.Context) {
 		appLogger.Warn("NoRoute hit", "method", c.Request.Method, "path", c.Request.URL.Path)
@@ -151,6 +157,7 @@ func deviceServiceHandler() gin.HandlerFunc {
 
 func buildGetServicesResponse(scheme, host string) string {
 	deviceAddress := fmt.Sprintf("%s://%s/onvif/device_service", scheme, host)
+	mediaAddress := fmt.Sprintf("%s://%s/onvif/media_service", scheme, host)
 	media2Address := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
@@ -181,6 +188,20 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
+					<trt:Capabilities xmlns:trt="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" EXICompression="false">
+						<trt:ProfileCapabilities MaximumNumberOfProfiles="1" />
+						<trt:StreamingCapabilities RTPMulticast="false" RTP_TCP="true" RTP_RTSP_TCP="true" NonAggregateControl="false" NoRTSPStreaming="false" />
+					</trt:Capabilities>
+				</tds:Capabilities>
+			</tds:Service>
+			<tds:Service>
+				<tds:Namespace>%s</tds:Namespace>
+				<tds:XAddr>%s</tds:XAddr>
+				<tds:Version>
+					<tt:Major>25</tt:Major>
+					<tt:Minor>06</tt:Minor>
+				</tds:Version>
+				<tds:Capabilities>
 					<tr2:Capabilities xmlns:tr2="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
 						<tr2:ProfileCapabilities MaximumNumberOfProfiles="1" ConfigurationsSupported="VideoSource,VideoEncoder" />
 						<tr2:StreamingCapabilities RTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" SecureRTSPStreaming="true" />
@@ -191,7 +212,19 @@ func buildGetServicesResponse(scheme, host string) string {
 			</tds:Service>
 		</tds:GetServicesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, tdsNamespace, deviceAddress, tr2Namespace, media2Address, tr2Namespace)
+	</s:Envelope>`,
+		soapNamespace,
+		tdsNamespace,
+		ttNamespace,
+		tdsNamespace,
+		deviceAddress,
+		trtNamespace,
+		mediaAddress,
+		trtNamespace,
+		tr2Namespace,
+		media2Address,
+		tr2Namespace,
+	)
 }
 
 func buildGetCapabilitiesResponse(scheme, host string) string {
@@ -297,7 +330,7 @@ func buildGetNetworkProtocolsResponse() string {
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, port)
 }
 
-func buildGetAudioOutputConfigurationsResponse() string {
+func buildMedia2GetAudioOutputConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
 	<s:Body>
@@ -308,7 +341,7 @@ func buildGetAudioOutputConfigurationsResponse() string {
 </s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
 }
 
-func buildGetAudioSourcesResponse() string {
+func buildMedia2GetAudioSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
 	<s:Body>
@@ -319,13 +352,13 @@ func buildGetAudioSourcesResponse() string {
 </s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
 }
 
-func buildGetVideoSourcesResponse() string {
+func buildMedia2GetVideoSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
 	<s:Body>
 		<tr2:GetVideoSourcesResponse xmlns:tr2="%s" xmlns:tt="%s">
 			<tr2:VideoSources>
-				<tt:VideoSource token="938c2c2e-e083-4494-8090-568373dc9e92">
+				<tt:VideoSource token="%s">
 					<tt:Framerate>20.0</tt:Framerate>
 					<tt:Resolution>
 						<tt:Width>1920</tt:Width>
@@ -335,7 +368,29 @@ func buildGetVideoSourcesResponse() string {
 			</tr2:VideoSources>
 		</tr2:GetVideoSourcesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace, videoSourceToken)
+}
+
+func buildMediaGetVideoSourcesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetVideoSourcesResponse xmlns:trt="%s" xmlns:tt="%s">
+			<trt:VideoSources token="%s">
+				<tt:Framerate>20.0</tt:Framerate>
+				<tt:Resolution>
+					<tt:Width>1920</tt:Width>
+					<tt:Height>1080</tt:Height>
+				</tt:Resolution>
+			</trt:VideoSources>
+		</trt:GetVideoSourcesResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		videoSourceToken,
+	)
 }
 
 func requestScheme(c *gin.Context) string {
@@ -354,11 +409,69 @@ func requestScheme(c *gin.Context) string {
 	return "http"
 }
 
+func buildMediaGetAudioSourcesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetAudioSourcesResponse xmlns:trt="%s">
+		</trt:GetAudioSourcesResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func buildMediaGetAudioOutputConfigurationsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetAudioOutputConfigurationsResponse xmlns:trt="%s">
+		</trt:GetAudioOutputConfigurationsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func mediaServiceHandler() gin.HandlerFunc {
+	const (
+		getVideoSourcesAction       = "GetVideoSources"
+		getAudioSourcesAction       = "GetAudioSources"
+		getAudioOutputConfigsAction = "GetAudioOutputConfigurations"
+	)
+
+	return func(c *gin.Context) {
+		var envelope soapEnvelope
+		if err := xml.NewDecoder(c.Request.Body).Decode(&envelope); err != nil {
+			appLogger.Warn("failed to parse media request", "err", err)
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		host := c.Request.Host
+		if host == "" {
+			host = "localhost:" + strconv.Itoa(port)
+		}
+
+		bodyContent := strings.TrimSpace(envelope.Body.Raw)
+		switch {
+		case strings.Contains(bodyContent, getVideoSourcesAction):
+			payload := buildMediaGetVideoSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioSourcesAction):
+			payload := buildMediaGetAudioSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioOutputConfigsAction):
+			payload := buildMediaGetAudioOutputConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		default:
+			appLogger.Warn("media_service request action not recognized", "body", bodyContent)
+			c.Status(http.StatusBadRequest)
+		}
+	}
+}
+
 func media2ServiceHandler() gin.HandlerFunc {
 	const (
-		getAudioOutputConfigurationsAction = "GetAudioOutputConfigurations"
-		getAudioSourcesAction              = "GetAudioSources"
-		getVideoSourcesAction              = "GetVideoSources"
+		getAudioOutputConfigurations = "GetAudioOutputConfigurations"
+		getAudioSources              = "GetAudioSources"
+		getVideoSources              = "GetVideoSources"
 	)
 
 	return func(c *gin.Context) {
@@ -371,14 +484,14 @@ func media2ServiceHandler() gin.HandlerFunc {
 
 		bodyContent := strings.TrimSpace(envelope.Body.Raw)
 		switch {
-		case strings.Contains(bodyContent, getAudioOutputConfigurationsAction):
-			payload := buildGetAudioOutputConfigurationsResponse()
+		case strings.Contains(bodyContent, getAudioOutputConfigurations):
+			payload := buildMedia2GetAudioOutputConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
-		case strings.Contains(bodyContent, getAudioSourcesAction):
-			payload := buildGetAudioSourcesResponse()
+		case strings.Contains(bodyContent, getAudioSources):
+			payload := buildMedia2GetAudioSourcesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
-		case strings.Contains(bodyContent, getVideoSourcesAction):
-			payload := buildGetVideoSourcesResponse()
+		case strings.Contains(bodyContent, getVideoSources):
+			payload := buildMedia2GetVideoSourcesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			appLogger.Warn("media2 request action not recognized", "body", bodyContent)
