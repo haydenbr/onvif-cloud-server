@@ -184,8 +184,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>25</tt:Major>
-					<tt:Minor>06</tt:Minor>
+					<tt:Major>20</tt:Major>
+					<tt:Major>12</tt:Major>
 				</tds:Version>
 				<tds:Capabilities>
 					<tds:Capabilities>
@@ -200,8 +200,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>25</tt:Major>
-					<tt:Minor>06</tt:Minor>
+					<tt:Major>20</tt:Major>
+					<tt:Major>12</tt:Major>
 				</tds:Version>
 				<tds:Capabilities>
 					<trt:Capabilities xmlns:trt="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" EXICompression="false">
@@ -214,8 +214,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>25</tt:Major>
-					<tt:Minor>06</tt:Minor>
+					<tt:Major>20</tt:Major>
+					<tt:Major>12</tt:Major>
 				</tds:Version>
 				<tds:Capabilities>
 					<tr2:Capabilities xmlns:tr2="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
