@@ -393,6 +393,22 @@ func buildMediaGetVideoSourcesResponse() string {
 	)
 }
 
+func buildMediaGetVideoSourceConfigurationsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetVideoSourceConfigurationsResponse xmlns:trt="%s" xmlns:tt="%s">
+			<trt:Configurations token="%s" ViewMode="tt:Original">
+				<tt:Name>VideoSourceConfig</tt:Name>
+				<tt:UseCount>1</tt:UseCount>
+				<tt:SourceToken>%s</tt:SourceToken>
+				<tt:Bounds x="0" y="0" width="1920" height="1080" />
+			</trt:Configurations>
+		</trt:GetVideoSourceConfigurationsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace, ttNamespace, videoSourceConfigToken, videoSourceToken)
+}
+
 func buildMediaGetProfilesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
@@ -400,7 +416,7 @@ func buildMediaGetProfilesResponse() string {
 		<trt:GetProfilesResponse xmlns:trt="%s" xmlns:tt="%s">
 			<trt:Profiles token="%s" fixed="false">
 				<tt:Name>MainProfile</tt:Name>
-				<tt:VideoSourceConfiguration token="%s">
+				<tt:VideoSourceConfiguration token="%s" ViewMode="tt:Original">
 					<tt:Name>VideoSourceConfig</tt:Name>
 					<tt:UseCount>1</tt:UseCount>
 					<tt:SourceToken>%s</tt:SourceToken>
@@ -516,15 +532,61 @@ func buildMediaGetAudioSourceConfigurationsResponse() string {
 </s:Envelope>`, soapNamespace, trtNamespace)
 }
 
+func buildMediaGetVideoEncoderConfigurationOptionsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetVideoEncoderConfigurationOptionsResponse xmlns:trt="%s" xmlns:tt="%s">
+			<trt:Options>
+				<tt:QualityRange>
+					<tt:Min>1</tt:Min>
+					<tt:Max>1</tt:Max>
+				</tt:QualityRange>
+				<tt:H264>
+					<tt:ResolutionsAvailable>
+						<tt:Width>1920</tt:Width>
+						<tt:Height>1080</tt:Height>
+					</tt:ResolutionsAvailable>
+					<tt:GovLengthRange>
+						<tt:Min>60</tt:Min>
+						<tt:Max>60</tt:Max>
+					</tt:GovLengthRange>
+					<tt:FrameRateRange>
+						<tt:Min>20</tt:Min>
+						<tt:Max>20</tt:Max>
+					</tt:FrameRateRange>
+				</tt:H264>
+			</trt:Options>
+		</trt:GetVideoEncoderConfigurationOptionsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace, ttNamespace)
+}
+
+func buildMediaGetOSDOptionsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetOSDOptionsResponse xmlns:trt="%s" xmlns:tt="%s">
+			<trt:OSDOptions>
+				<tt:MaximumNumberOfOSDs>0</tt:MaximumNumberOfOSDs>
+			</trt:OSDOptions>
+		</trt:GetOSDOptionsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace, ttNamespace)
+}
+
 func mediaServiceHandler() gin.HandlerFunc {
 	const (
 		getVideoSourcesAction               = "GetVideoSources"
+		getVideoSourceConfigurationsAction  = "GetVideoSourceConfigurations"
 		getAudioSourcesAction               = "GetAudioSources"
 		getAudioOutputConfigsAction         = "GetAudioOutputConfigurations"
 		getMetadataConfigOptionsAction      = "GetMetadataConfigurationOptions"
 		getMetadataConfigurationsAction     = "GetMetadataConfigurations"
 		getAudioEncoderConfigurationsAction = "GetAudioEncoderConfigurations"
 		getAudioSourceConfigurationsAction  = "GetAudioSourceConfigurations"
+		getVideoEncoderConfigOptionsAction  = "GetVideoEncoderConfigurationOptions"
+		getOSDOptionsAction                 = "GetOSDOptions"
 		getProfilesAction                   = "GetProfiles"
 	)
 
@@ -546,6 +608,9 @@ func mediaServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getVideoSourcesAction):
 			payload := buildMediaGetVideoSourcesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoSourceConfigurationsAction):
+			payload := buildMediaGetVideoSourceConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getAudioSourcesAction):
 			payload := buildMediaGetAudioSourcesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
@@ -563,6 +628,12 @@ func mediaServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getAudioSourceConfigurationsAction):
 			payload := buildMediaGetAudioSourceConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderConfigOptionsAction):
+			payload := buildMediaGetVideoEncoderConfigurationOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getOSDOptionsAction):
+			payload := buildMediaGetOSDOptionsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getProfilesAction):
 			payload := buildMediaGetProfilesResponse()
