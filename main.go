@@ -16,6 +16,7 @@ import (
 
 const (
 	port                    = 8081
+	rtspURL                 = "rtsp://716f898c7b71.entrypoint.cloud.wowza.com:1935/app-8F9K44lJ/304679fe_stream2"
 	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
 	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
