@@ -90,6 +90,21 @@ type soapEnvelope struct {
 	} `xml:"Body"`
 }
 
+type getStreamUriRequest struct {
+	XMLName      xml.Name    `xml:"GetStreamUri"`
+	StreamSetup  streamSetup `xml:"StreamSetup"`
+	ProfileToken string      `xml:"ProfileToken"`
+}
+
+type streamSetup struct {
+	Stream    string    `xml:"Stream"`
+	Transport transport `xml:"Transport"`
+}
+
+type transport struct {
+	Protocol string `xml:"Protocol"`
+}
+
 type bodyLogWriter struct {
 	gin.ResponseWriter
 	body bytes.Buffer
@@ -270,7 +285,7 @@ func buildGetNetworkInterfacesResponse() string {
           <tt:Enabled>true</tt:Enabled>
           <tt:Config>
             <tt:Manual>
-              <tt:Address>192.168.0.100</tt:Address> <!-- need to try 0.0.0.0 -->
+              <tt:Address>0.0.0.0</tt:Address>
               <tt:PrefixLength>24</tt:PrefixLength>
             </tt:Manual>
             <tt:DHCP>false</tt:DHCP>
@@ -576,6 +591,37 @@ func buildMediaGetOSDOptionsResponse() string {
 </s:Envelope>`, soapNamespace, trtNamespace, ttNamespace)
 }
 
+func buildMediaGetStreamUriResponse(uri string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s">
+	<s:Body>
+		<trt:GetStreamUriResponse xmlns:trt="%s" xmlns:tt="%s">
+			<trt:MediaUri>
+				<tt:Uri>%s</tt:Uri>
+				<tt:InvalidAfterConnect>false</tt:InvalidAfterConnect>
+				<tt:InvalidAfterReboot>false</tt:InvalidAfterReboot>
+				<tt:Timeout>P1Y</tt:Timeout>
+			</trt:MediaUri>
+		</trt:GetStreamUriResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace, ttNamespace, rtspURL)
+}
+
+func parseGetStreamUriRequest(body string) (getStreamUriRequest, error) {
+	var req getStreamUriRequest
+	if err := xml.Unmarshal([]byte(body), &req); err != nil {
+		return req, err
+	}
+	return req, nil
+}
+
+func protocolToStreamScheme(proto string) string {
+	if strings.EqualFold(proto, "RTSPS") {
+		return "rtsps"
+	}
+	return "rtsp"
+}
+
 func mediaServiceHandler() gin.HandlerFunc {
 	const (
 		getVideoSourcesAction               = "GetVideoSources"
@@ -589,6 +635,7 @@ func mediaServiceHandler() gin.HandlerFunc {
 		getVideoEncoderConfigOptionsAction  = "GetVideoEncoderConfigurationOptions"
 		getOSDOptionsAction                 = "GetOSDOptions"
 		getProfilesAction                   = "GetProfiles"
+		getStreamUriAction                  = "GetStreamUri"
 	)
 
 	return func(c *gin.Context) {
@@ -638,6 +685,21 @@ func mediaServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getProfilesAction):
 			payload := buildMediaGetProfilesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getStreamUriAction):
+			req, err := parseGetStreamUriRequest(bodyContent)
+			if err != nil {
+				appLogger.Warn("failed to parse GetStreamUri", "err", err)
+				c.Status(http.StatusBadRequest)
+				return
+			}
+			profile := req.ProfileToken
+			if profile == "" {
+				profile = profileToken
+			}
+			scheme := protocolToStreamScheme(req.StreamSetup.Transport.Protocol)
+			uri := fmt.Sprintf("%s://%s/stream/%s", scheme, host, profile)
+			payload := buildMediaGetStreamUriResponse(uri)
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			appLogger.Warn("media_service request action not recognized", "body", bodyContent)
