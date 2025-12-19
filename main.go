@@ -201,7 +201,7 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
-					<trt:Capabilities xmlns:trt="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" EXICompression="false">
+					<trt:Capabilities xmlns:trt="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" EXICompression="false">
 						<trt:ProfileCapabilities MaximumNumberOfProfiles="1" />
 						<trt:StreamingCapabilities RTPMulticast="false" RTP_TCP="true" RTP_RTSP_TCP="true" NonAggregateControl="false" NoRTSPStreaming="false" />
 					</trt:Capabilities>
