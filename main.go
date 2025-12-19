@@ -16,7 +16,8 @@ import (
 
 const (
 	port                    = 8081
-	rtspURL                 = "rtsp://716f898c7b71.entrypoint.cloud.wowza.com:1935/app-8F9K44lJ/304679fe_stream2"
+	rtspURL                 = "rtsp://6.tcp.ngrok.io:14406/test"
+	fakeAddress             = "192.168.100.250"
 	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
 	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
@@ -123,7 +124,6 @@ func (w *bodyLogWriter) WriteString(s string) (int, error) {
 func deviceServiceHandler() gin.HandlerFunc {
 	const (
 		getServicesAction          = "GetServices"
-		getCapabilitiesAction      = "GetCapabilities"
 		getNetworkInterfacesAction = "GetNetworkInterfaces"
 		getDeviceInfoAction        = "GetDeviceInformation"
 		getNetworkProtocolsAction  = "GetNetworkProtocols"
@@ -148,9 +148,6 @@ func deviceServiceHandler() gin.HandlerFunc {
 		switch {
 		case strings.Contains(bodyContent, getServicesAction):
 			payload := buildGetServicesResponse(scheme, host)
-			c.Data(http.StatusOK, soapContentType, []byte(payload))
-		case strings.Contains(bodyContent, getCapabilitiesAction):
-			payload := buildGetCapabilitiesResponse(scheme, host)
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getNetworkInterfacesAction):
 			payload := buildGetNetworkInterfacesResponse()
@@ -184,8 +181,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>20</tt:Major>
-					<tt:Major>12</tt:Major>
+					<tt:Major>25</tt:Major>
+					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
 					<tds:Capabilities>
@@ -200,8 +197,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>20</tt:Major>
-					<tt:Major>12</tt:Major>
+					<tt:Major>25</tt:Major>
+					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
 					<trt:Capabilities xmlns:trt="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" EXICompression="false">
@@ -214,8 +211,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
 				<tds:Version>
-					<tt:Major>20</tt:Major>
-					<tt:Major>12</tt:Major>
+					<tt:Major>25</tt:Major>
+					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
 					<tr2:Capabilities xmlns:tr2="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
@@ -243,32 +240,6 @@ func buildGetServicesResponse(scheme, host string) string {
 	)
 }
 
-func buildGetCapabilitiesResponse(scheme, host string) string {
-	deviceXAddr := fmt.Sprintf("%s://%s/onvif/device_service", scheme, host)
-	mediaXAddr := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
-
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
-	<s:Body>
-		<tds:GetCapabilitiesResponse xmlns:tds="%s" xmlns:tt="%s">
-			<tds:Capabilities>
-				<tt:Device>
-					<tt:XAddr>%s</tt:XAddr>
-				</tt:Device>
-				<tt:Media>
-					<tt:XAddr>%s</tt:XAddr>
-					<tt:StreamingCapabilities>
-						<tt:RTPMulticast>false</tt:RTPMulticast>
-						<tt:RTP_TCP>true</tt:RTP_TCP>
-						<tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP>
-					</tt:StreamingCapabilities>
-				</tt:Media>
-			</tds:Capabilities>
-		</tds:GetCapabilitiesResponse>
-	</s:Body>
-</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, deviceXAddr, mediaXAddr)
-}
-
 func buildGetNetworkInterfacesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
@@ -285,7 +256,7 @@ func buildGetNetworkInterfacesResponse() string {
           <tt:Enabled>true</tt:Enabled>
           <tt:Config>
             <tt:Manual>
-              <tt:Address>0.0.0.0</tt:Address>
+              <tt:Address>%s</tt:Address>
               <tt:PrefixLength>24</tt:PrefixLength>
             </tt:Manual>
             <tt:DHCP>false</tt:DHCP>
@@ -294,7 +265,7 @@ func buildGetNetworkInterfacesResponse() string {
 			</tds:NetworkInterfaces>
 		</tds:GetNetworkInterfacesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, fakeAddress)
 }
 
 func buildGetDeviceInformationResponse() string {
@@ -339,7 +310,7 @@ func buildGetNetworkProtocolsResponse() string {
 			<tds:NetworkProtocols>
 				<tt:Name>RTSP</tt:Name>
 				<tt:Enabled>true</tt:Enabled>
-				<tt:Port>554</tt:Port>
+				<tt:Port>14406</tt:Port>
 			</tds:NetworkProtocols>
 		</tds:GetNetworkProtocolsResponse>
 	</s:Body>
@@ -350,22 +321,20 @@ func buildMedia2GetAudioOutputConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
 	<s:Body>
-		<tr2:GetAudioOutputConfigurationsResponse xmlns:tr2="%s" xmlns:tt="%s">
-			<tr2:Configurations/>
+		<tr2:GetAudioOutputConfigurationsResponse xmlns:tr2="%s" >
 		</tr2:GetAudioOutputConfigurationsResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tr2Namespace)
 }
 
 func buildMedia2GetAudioSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
 	<s:Body>
-		<tr2:GetAudioSourcesResponse xmlns:tr2="%s" xmlns:tt="%s">
-			<tr2:AudioSources/>
+		<tr2:GetAudioSourcesResponse xmlns:tr2="%s">
 		</tr2:GetAudioSourcesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace)
+</s:Envelope>`, soapNamespace, tr2Namespace)
 }
 
 func buildMedia2GetVideoSourcesResponse() string {
@@ -591,7 +560,7 @@ func buildMediaGetOSDOptionsResponse() string {
 </s:Envelope>`, soapNamespace, trtNamespace, ttNamespace)
 }
 
-func buildMediaGetStreamUriResponse(uri string) string {
+func buildMediaGetStreamUriResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s">
 	<s:Body>
@@ -613,13 +582,6 @@ func parseGetStreamUriRequest(body string) (getStreamUriRequest, error) {
 		return req, err
 	}
 	return req, nil
-}
-
-func protocolToStreamScheme(proto string) string {
-	if strings.EqualFold(proto, "RTSPS") {
-		return "rtsps"
-	}
-	return "rtsp"
 }
 
 func mediaServiceHandler() gin.HandlerFunc {
@@ -644,11 +606,6 @@ func mediaServiceHandler() gin.HandlerFunc {
 			appLogger.Warn("failed to parse media request", "err", err)
 			c.Status(http.StatusBadRequest)
 			return
-		}
-
-		host := c.Request.Host
-		if host == "" {
-			host = "localhost:" + strconv.Itoa(port)
 		}
 
 		bodyContent := strings.TrimSpace(envelope.Body.Raw)
@@ -697,9 +654,7 @@ func mediaServiceHandler() gin.HandlerFunc {
 			if profile == "" {
 				profile = profileToken
 			}
-			scheme := protocolToStreamScheme(req.StreamSetup.Transport.Protocol)
-			uri := fmt.Sprintf("%s://%s/stream/%s", scheme, host, profile)
-			payload := buildMediaGetStreamUriResponse(uri)
+			payload := buildMediaGetStreamUriResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			appLogger.Warn("media_service request action not recognized", "body", bodyContent)
