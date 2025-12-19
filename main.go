@@ -174,9 +174,13 @@ func buildGetServicesResponse(scheme, host string) string {
 	media2Address := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s"
+	xmlns:trt="%s"
+	xmlns:tr2="%s">
 	<s:Body>
-		<tds:GetServicesResponse xmlns:tds="%s" xmlns:tt="%s">
+		<tds:GetServicesResponse>
 			<tds:Service>
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
@@ -201,7 +205,7 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
-					<trt:Capabilities xmlns:trt="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" EXICompression="false">
+					<trt:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" EXICompression="false">
 						<trt:ProfileCapabilities MaximumNumberOfProfiles="1" />
 						<trt:StreamingCapabilities RTPMulticast="false" RTP_TCP="true" RTP_RTSP_TCP="true" NonAggregateControl="false" NoRTSPStreaming="false" />
 					</trt:Capabilities>
@@ -215,7 +219,7 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tt:Minor>06</tt:Minor>
 				</tds:Version>
 				<tds:Capabilities>
-					<tr2:Capabilities xmlns:tr2="%s" SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
+					<tr2:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
 						<tr2:ProfileCapabilities MaximumNumberOfProfiles="1" ConfigurationsSupported="VideoSource,VideoEncoder" />
 						<tr2:StreamingCapabilities RTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" SecureRTSPStreaming="true" />
 						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
@@ -242,9 +246,12 @@ func buildGetServicesResponse(scheme, host string) string {
 
 func buildGetNetworkInterfacesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope
+	xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<tds:GetNetworkInterfacesResponse xmlns:tds="%s" xmlns:tt="%s">
+		<tds:GetNetworkInterfacesResponse>
 			<tds:NetworkInterfaces token="eth0">
 				<tt:Enabled>true</tt:Enabled>
         <tt:Info>
@@ -270,9 +277,11 @@ func buildGetNetworkInterfacesResponse() string {
 
 func buildGetDeviceInformationResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<tds:GetDeviceInformationResponse xmlns:tds="%s" xmlns:tt="%s">
+		<tds:GetDeviceInformationResponse>
 			<tds:Manufacturer>Flock Safety</tds:Manufacturer>
 			<tds:Model>Condor</tds:Model>
 			<tds:FirmwareVersion>v1.0</tds:FirmwareVersion>
@@ -285,9 +294,11 @@ func buildGetDeviceInformationResponse() string {
 
 func buildGetUsersResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<tds:GetUsersResponse xmlns:tds="%s" xmlns:tt="%s">
+		<tds:GetUsersResponse>
 			<tds:User>
 				<tt:Username>flock</tt:Username>
 				<tt:UserLevel>User</tt:UserLevel>
@@ -299,13 +310,20 @@ func buildGetUsersResponse() string {
 
 func buildGetNetworkProtocolsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<tds:GetNetworkProtocolsResponse xmlns:tds="%s" xmlns:tt="%s">
+		<tds:GetNetworkProtocolsResponse>
 			<tds:NetworkProtocols>
-				<tt:Name>HTTPS</tt:Name>
+				<tt:Name>HTTP</tt:Name>
 				<tt:Enabled>true</tt:Enabled>
 				<tt:Port>%d</tt:Port>
+			</tds:NetworkProtocols>
+			<tds:NetworkProtocols>
+				<tt:Name>HTTPS</tt:Name>
+				<tt:Enabled>false</tt:Enabled>
+				<tt:Port>443</tt:Port>
 			</tds:NetworkProtocols>
 			<tds:NetworkProtocols>
 				<tt:Name>RTSP</tt:Name>
@@ -319,9 +337,9 @@ func buildGetNetworkProtocolsResponse() string {
 
 func buildMedia2GetAudioOutputConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:tr2="%s">
 	<s:Body>
-		<tr2:GetAudioOutputConfigurationsResponse xmlns:tr2="%s" >
+		<tr2:GetAudioOutputConfigurationsResponse>
 		</tr2:GetAudioOutputConfigurationsResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tr2Namespace)
@@ -329,9 +347,9 @@ func buildMedia2GetAudioOutputConfigurationsResponse() string {
 
 func buildMedia2GetAudioSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:tr2="%s">
 	<s:Body>
-		<tr2:GetAudioSourcesResponse xmlns:tr2="%s">
+		<tr2:GetAudioSourcesResponse>
 		</tr2:GetAudioSourcesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tr2Namespace)
@@ -339,9 +357,11 @@ func buildMedia2GetAudioSourcesResponse() string {
 
 func buildMedia2GetVideoSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:tr2="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<tr2:GetVideoSourcesResponse xmlns:tr2="%s" xmlns:tt="%s">
+		<tr2:GetVideoSourcesResponse>
 			<tr2:VideoSources>
 				<tt:VideoSource token="%s">
 					<tt:Framerate>20.0</tt:Framerate>
@@ -358,9 +378,11 @@ func buildMedia2GetVideoSourcesResponse() string {
 
 func buildMediaGetVideoSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<trt:GetVideoSourcesResponse xmlns:trt="%s" xmlns:tt="%s">
+		<trt:GetVideoSourcesResponse>
 			<trt:VideoSources token="%s">
 				<tt:Framerate>20.0</tt:Framerate>
 				<tt:Resolution>
@@ -380,9 +402,11 @@ func buildMediaGetVideoSourcesResponse() string {
 
 func buildMediaGetVideoSourceConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<trt:GetVideoSourceConfigurationsResponse xmlns:trt="%s" xmlns:tt="%s">
+		<trt:GetVideoSourceConfigurationsResponse>
 			<trt:Configurations token="%s" ViewMode="tt:Original">
 				<tt:Name>VideoSourceConfig</tt:Name>
 				<tt:UseCount>1</tt:UseCount>
@@ -396,9 +420,11 @@ func buildMediaGetVideoSourceConfigurationsResponse() string {
 
 func buildMediaGetProfilesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<trt:GetProfilesResponse xmlns:trt="%s" xmlns:tt="%s">
+		<trt:GetProfilesResponse>
 			<trt:Profiles token="%s" fixed="false">
 				<tt:Name>MainProfile</tt:Name>
 				<tt:VideoSourceConfiguration token="%s" ViewMode="tt:Original">
@@ -459,9 +485,9 @@ func requestScheme(c *gin.Context) string {
 
 func buildMediaGetAudioSourcesResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:trt="%s">
 	<s:Body>
-		<trt:GetAudioSourcesResponse xmlns:trt="%s">
+		<trt:GetAudioSourcesResponse>
 		</trt:GetAudioSourcesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
@@ -469,9 +495,9 @@ func buildMediaGetAudioSourcesResponse() string {
 
 func buildMediaGetAudioOutputConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:trt="%s">
 	<s:Body>
-		<trt:GetAudioOutputConfigurationsResponse xmlns:trt="%s">
+		<trt:GetAudioOutputConfigurationsResponse>
 		</trt:GetAudioOutputConfigurationsResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
@@ -479,9 +505,9 @@ func buildMediaGetAudioOutputConfigurationsResponse() string {
 
 func buildMediaGetMetadataConfigurationOptionsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:trt="%s">
 	<s:Body>
-		<trt:GetMetadataConfigurationOptionsResponse xmlns:trt="%s">
+		<trt:GetMetadataConfigurationOptionsResponse>
 		</trt:GetMetadataConfigurationOptionsResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
@@ -489,9 +515,9 @@ func buildMediaGetMetadataConfigurationOptionsResponse() string {
 
 func buildMediaGetMetadataConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:trt="%s">
 	<s:Body>
-		<trt:GetMetadataConfigurationsResponse xmlns:trt="%s">
+		<trt:GetMetadataConfigurationsResponse>
 		</trt:GetMetadataConfigurationsResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
@@ -499,9 +525,9 @@ func buildMediaGetMetadataConfigurationsResponse() string {
 
 func buildMediaGetAudioEncoderConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:trt="%s">
 	<s:Body>
-		<trt:GetAudioEncoderConfigurationsResponse xmlns:trt="%s">
+		<trt:GetAudioEncoderConfigurationsResponse>
 		</trt:GetAudioEncoderConfigurationsResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
@@ -509,9 +535,9 @@ func buildMediaGetAudioEncoderConfigurationsResponse() string {
 
 func buildMediaGetAudioSourceConfigurationsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s" xmlns:trt="%s">
 	<s:Body>
-		<trt:GetAudioSourceConfigurationsResponse xmlns:trt="%s">
+		<trt:GetAudioSourceConfigurationsResponse>
 		</trt:GetAudioSourceConfigurationsResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
@@ -519,9 +545,11 @@ func buildMediaGetAudioSourceConfigurationsResponse() string {
 
 func buildMediaGetVideoEncoderConfigurationOptionsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<trt:GetVideoEncoderConfigurationOptionsResponse xmlns:trt="%s" xmlns:tt="%s">
+		<trt:GetVideoEncoderConfigurationOptionsResponse>
 			<trt:Options>
 				<tt:QualityRange>
 					<tt:Min>1</tt:Min>
@@ -549,9 +577,11 @@ func buildMediaGetVideoEncoderConfigurationOptionsResponse() string {
 
 func buildMediaGetOSDOptionsResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<trt:GetOSDOptionsResponse xmlns:trt="%s" xmlns:tt="%s">
+		<trt:GetOSDOptionsResponse>
 			<trt:OSDOptions>
 				<tt:MaximumNumberOfOSDs>0</tt:MaximumNumberOfOSDs>
 			</trt:OSDOptions>
@@ -562,9 +592,11 @@ func buildMediaGetOSDOptionsResponse() string {
 
 func buildMediaGetStreamUriResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s">
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
 	<s:Body>
-		<trt:GetStreamUriResponse xmlns:trt="%s" xmlns:tt="%s">
+		<trt:GetStreamUriResponse>
 			<trt:MediaUri>
 				<tt:Uri>%s</tt:Uri>
 				<tt:InvalidAfterConnect>false</tt:InvalidAfterConnect>
