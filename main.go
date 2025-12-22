@@ -15,20 +15,21 @@ import (
 )
 
 const (
-	localHTTPPort     = 8081
-	gatewayHTTPPort   = 10120
-	rtspHost          = "4.tcp.ngrok.io"
-	rtspPort          = 17797
-	fakeAddress       = "192.168.100.250"
-	soapNamespace     = "http://www.w3.org/2003/05/soap-envelope"
-	tdsNamespace      = "http://www.onvif.org/ver10/device/wsdl"
-	tr2Namespace      = "http://www.onvif.org/ver20/media/wsdl"
-	ttNamespace       = "http://www.onvif.org/ver10/schema"
-	tmdNamespace      = "http://www.onvif.org/ver10/deviceIO/wsdl"
-	soapContentType   = "application/soap+xml; charset=utf-8"
-	videoSourceToken  = "video-source-1"
-	profileToken      = "profile-1"
-	videoEncoderToken = "video-encoder-1"
+	localHTTPPort           = 8081
+	gatewayHTTPPort         = 10120
+	rtspHost                = "4.tcp.ngrok.io"
+	rtspPort                = 17797
+	fakeAddress             = "192.168.100.250"
+	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
+	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
+	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
+	ttNamespace             = "http://www.onvif.org/ver10/schema"
+	tmdNamespace            = "http://www.onvif.org/ver10/deviceIO/wsdl"
+	soapContentType         = "application/soap+xml; charset=utf-8"
+	videoSourceToken        = "video_source"
+	videoSourceConfigToken  = "video_source_config1"
+	mediaProfileToken       = "media_profile1"
+	videoEncoderConfigToken = "video_encoder_config"
 )
 
 var rtspURL = fmt.Sprintf("rtsp://%s:%d/test", rtspHost, rtspPort)
@@ -476,18 +477,18 @@ func buildMedia2GetMetadataConfigurationOptionsResponse() string {
 func buildMedia2GetProfilesResponse() string {
 	body := fmt.Sprintf(`<tr2:GetProfilesResponse>
 	<tr2:Profiles token="%s" fixed="true">
-		<tt:Name>Primary Media2 Profile</tt:Name>
+		<tt:Name>%s</tt:Name>
 		<tr2:Configurations>
-			<tr2:VideoSource token="%s" ViewMode="tt:Original">
-				<tt:Name>Primary Video Source</tt:Name>
+			<tr2:VideoSource token="%s" ViewMode="Original">
+				<tt:Name>%s</tt:Name>
 				<tt:UseCount>1</tt:UseCount>
 				<tt:SourceToken>%s</tt:SourceToken>
 				<tt:Bounds x="0" y="0" width="1920" height="1080" />
 			</tr2:VideoSource>
 			<tr2:VideoEncoder token="%s" GovLength="60" AnchorFrameDistance="1" Profile="Baseline">
-				<tt:Name>Primary Video Encoder</tt:Name>
+				<tt:Name>%s</tt:Name>
 				<tt:UseCount>1</tt:UseCount>
-				<tt:Encoding>H264</tt:Encoding>
+				<tt:Encoding>H265</tt:Encoding>
 				<tt:Resolution>
 					<tt:Width>1920</tt:Width>
 					<tt:Height>1080</tt:Height>
@@ -501,10 +502,13 @@ func buildMedia2GetProfilesResponse() string {
 		</tr2:Configurations>
 	</tr2:Profiles>
 </tr2:GetProfilesResponse>`,
-		profileToken,
+		mediaProfileToken,
+		mediaProfileToken,
+		videoSourceConfigToken,
+		videoSourceConfigToken,
 		videoSourceToken,
-		videoSourceToken,
-		videoEncoderToken,
+		videoEncoderConfigToken,
+		videoEncoderConfigToken,
 	)
 
 	return wrapMedia2Response(body)
