@@ -21,39 +21,17 @@ tmux has-session -t "$SESSION" 2>/dev/null || {
     "docker run --rm -p 8554:8554 bluenviron/mediamtx:latest"
 
   tmux respawn-pane -k -t "$SESSION":0.3 \
-    "sleep 1 && ffmpeg -re -stream_loop -1 -f lavfi \
-     -i testsrc=size=1920x1080:rate=30 \
-     -c:v libx264 \
-     -profile:v baseline -level 4.0 \
-     -pix_fmt yuv420p \
-     -preset veryfast -tune zerolatency \
-     -g 60 -keyint_min 60 -bf 0 \
-     -b:v 4M -maxrate 4M -bufsize 8M \
-     -x264-params \"repeat-headers=1:open_gop=0\" \
-     -f rtsp -rtsp_transport tcp rtsp://localhost:8554/test"
+    "sleep 1 && ffmpeg \
+      -re \
+      -f lavfi -i testsrc=size=1920x1080:rate=30 \
+      -c:v hevc_videotoolbox \
+      -profile:v main \
+      -b:v 4000k -maxrate 4000k -bufsize 8000k \
+      -g 30 -keyint_min 30 -sc_threshold 0 \
+      -pix_fmt yuv420p \
+      -flags +global_header \
+      -f rtsp -rtsp_transport tcp \
+      rtsp://localhost:8554/test"
 }
 
 tmux attach -t "$SESSION"
-
-# tmux has-session -t "$SESSION" 2>/dev/null || {
-#   tmux new-session -d -s "$SESSION" \
-#     "ngrok tcp 8081"
-
-#   tmux split-window -v -t "$SESSION":0 \
-#     "ngrok tcp 8554"
-
-#   tmux split-window -h -t "$SESSION":0.0 \
-#     "docker run --rm -p 8554:8554 bluenviron/mediamtx:latest"
-  
-#   tmux split-window -h -t "$SESSION":0.1 \
-    # "sleep 1 && ffmpeg -re -stream_loop -1 -f lavfi \
-    #  -i testsrc=size=1920x1080:rate=30 \
-    #  -c:v libx264 \
-    #  -profile:v baseline -level 4.0 \
-    #  -pix_fmt yuv420p \
-    #  -preset veryfast -tune zerolatency \
-    #  -g 60 -keyint_min 60 -bf 0 \
-    #  -b:v 4M -maxrate 4M -bufsize 8M \
-    #  -x264-params \"repeat-headers=1:open_gop=0\" \
-    #  -f rtsp -rtsp_transport tcp rtsp://localhost:8554/test"
-# }
