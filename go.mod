@@ -1,4 +1,4 @@
-module github.com/flocksafety/onvif-mock
+module github.com/haydenbr/onvif-cloud-server
 
 go 1.24.1
 

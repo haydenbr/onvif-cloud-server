@@ -309,8 +309,8 @@ func buildGetDeviceInformationResponse() string {
 	xmlns:tt="%s">
 	<s:Body>
 		<tds:GetDeviceInformationResponse>
-			<tds:Manufacturer>Flock Safety</tds:Manufacturer>
-			<tds:Model>Condor</tds:Model>
+			<tds:Manufacturer>Cool Camera Co.</tds:Manufacturer>
+			<tds:Model>Cool Camera</tds:Model>
 			<tds:FirmwareVersion>v1.0</tds:FirmwareVersion>
 			<tds:SerialNumber>serialnumber123</tds:SerialNumber>
 			<tds:HardwareId>hardwareid123</tds:HardwareId>
@@ -327,7 +327,7 @@ func buildGetUsersResponse() string {
 	<s:Body>
 		<tds:GetUsersResponse>
 			<tds:User>
-				<tt:Username>flock</tt:Username>
+				<tt:Username>user</tt:Username>
 				<tt:UserLevel>User</tt:UserLevel>
 			</tds:User>
 		</tds:GetUsersResponse>
