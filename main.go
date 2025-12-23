@@ -48,7 +48,8 @@ func main() {
 
 	router.NoRoute(func(c *gin.Context) {
 		appLogger.Warn("NoRoute hit", "method", c.Request.Method, "path", c.Request.URL.Path)
-		c.Status(http.StatusInternalServerError)
+		payload := buildServiceNotSupportedFault(c.Request.URL.Path)
+		c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
 	})
 
 	addr := ":" + strconv.Itoa(localHTTPPort)
@@ -695,6 +696,35 @@ func buildMedia2GetStreamUriResponse() string {
 </tr2:GetStreamUriResponse>`, escapeXML(rtspURL))
 
 	return wrapMedia2Response(body)
+}
+
+func buildServiceNotSupportedFault(path string) string {
+	reason := "Service is not supported"
+	if strings.TrimSpace(path) != "" {
+		reason = fmt.Sprintf("Service %s is not supported", path)
+	}
+	reason = escapeXML(reason)
+
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:ter="%s">
+	<s:Body>
+		<s:Fault>
+			<s:Code>
+				<s:Value>s:Sender</s:Value>
+				<s:Subcode>
+					<s:Value>ter:InvalidArgVal</s:Value>
+					<s:Subcode>
+						<s:Value>ter:ServiceNotSupported</s:Value>
+					</s:Subcode>
+				</s:Subcode>
+			</s:Code>
+			<s:Reason>
+				<s:Text xml:lang="en">%s</s:Text>
+			</s:Reason>
+		</s:Fault>
+	</s:Body>
+</s:Envelope>`, soapNamespace, terNamespace, reason)
 }
 
 func buildActionNotSupportedFault(action string) string {
