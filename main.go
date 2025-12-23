@@ -391,6 +391,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getAudioOutputConfigurations    = "GetAudioOutputConfigurations"
 		getAudioSources                 = "GetAudioSources"
 		getVideoSources                 = "GetVideoSources"
+		getVideoSourceConfigurations    = "GetVideoSourceConfigurations"
 		getMetadataConfigurationOptions = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations       = "GetMetadataConfigurations"
 		getAudioEncoderConfigurations   = "GetAudioEncoderConfigurations"
@@ -428,6 +429,9 @@ func media2ServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoSources):
 			payload := buildMedia2GetVideoSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoSourceConfigurations):
+			payload := buildMedia2GetVideoSourceConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getProfiles):
 			payload := buildMedia2GetProfilesResponse()
@@ -531,6 +535,28 @@ func buildMedia2GetVideoSourcesResponse() string {
 		</tt:Resolution>
 	</tr2:VideoSources>
 </tr2:GetVideoSourcesResponse>`, videoSourceToken)
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2GetVideoSourceConfigurationsResponse() string {
+	body := fmt.Sprintf(`<tr2:GetVideoSourceConfigurationsResponse>
+	<tr2:Configurations token="%s" ViewMode="Original">
+		<tt:Name>%s</tt:Name>
+		<tt:UseCount>1</tt:UseCount>
+		<tt:SourceToken>%s</tt:SourceToken>
+		<tt:Bounds x="0" y="0" width="1920" height="1080" />
+		<tt:Extension>
+			<tt:Rotate>
+				<tt:Mode>OFF</tt:Mode>
+			</tt:Rotate>
+		</tt:Extension>
+	</tr2:Configurations>
+</tr2:GetVideoSourceConfigurationsResponse>`,
+		videoSourceConfigToken,
+		videoSourceConfigToken,
+		videoSourceToken,
+	)
 
 	return wrapMedia2Response(body)
 }
