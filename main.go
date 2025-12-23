@@ -388,16 +388,18 @@ func buildDeviceIOGetVideoSourcesResponse() string {
 
 func media2ServiceHandler() gin.HandlerFunc {
 	const (
-		getAudioOutputConfigurations    = "GetAudioOutputConfigurations"
-		getAudioSources                 = "GetAudioSources"
-		getVideoSources                 = "GetVideoSources"
-		getVideoSourceConfigurations    = "GetVideoSourceConfigurations"
-		getMetadataConfigurationOptions = "GetMetadataConfigurationOptions"
-		getMetadataConfigurations       = "GetMetadataConfigurations"
-		getAudioEncoderConfigurations   = "GetAudioEncoderConfigurations"
-		getAudioSourceConfigurations    = "GetAudioSourceConfigurations"
-		getProfiles                     = "GetProfiles"
-		getOSDOptions                   = "GetOSDOptions"
+		getAudioOutputConfigurations        = "GetAudioOutputConfigurations"
+		getAudioSources                     = "GetAudioSources"
+		getVideoSources                     = "GetVideoSources"
+		getVideoSourceConfigurations        = "GetVideoSourceConfigurations"
+		getVideoEncoderInstances            = "GetVideoEncoderInstances"
+		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
+		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
+		getMetadataConfigurations           = "GetMetadataConfigurations"
+		getAudioEncoderConfigurations       = "GetAudioEncoderConfigurations"
+		getAudioSourceConfigurations        = "GetAudioSourceConfigurations"
+		getProfiles                         = "GetProfiles"
+		getOSDOptions                       = "GetOSDOptions"
 	)
 
 	return func(c *gin.Context) {
@@ -433,6 +435,12 @@ func media2ServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoSourceConfigurations):
 			payload := buildMedia2GetVideoSourceConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderConfigurationOptions):
+			payload := buildMedia2GetVideoEncoderConfigurationOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderInstances):
+			payload := buildMedia2GetVideoEncoderInstancesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getProfiles):
 			payload := buildMedia2GetProfilesResponse()
@@ -568,6 +576,38 @@ func buildMedia2GetVideoSourceConfigurationsResponse() string {
 		videoSourceConfigToken,
 		videoSourceToken,
 	)
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2GetVideoEncoderConfigurationOptionsResponse() string {
+	body := `<tr2:GetVideoEncoderConfigurationOptionsResponse>
+	<tr2:Options ConstantBitRateSupported="true" ProfilesSupported="Main" FrameRatesSupported="30 25 20 15 10" GovLengthRange="30 120">
+		<tt:Encoding>H265</tt:Encoding>
+		<tt:QualityRange>
+			<tt:Min>1</tt:Min>
+			<tt:Max>10</tt:Max>
+		</tt:QualityRange>
+		<tt:ResolutionsAvailable>
+			<tt:Width>1920</tt:Width>
+			<tt:Height>1080</tt:Height>
+		</tt:ResolutionsAvailable>
+		<tt:BitrateRange>
+			<tt:Min>256</tt:Min>
+			<tt:Max>8192</tt:Max>
+		</tt:BitrateRange>
+	</tr2:Options>
+</tr2:GetVideoEncoderConfigurationOptionsResponse>`
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2GetVideoEncoderInstancesResponse() string {
+	body := `<tr2:GetVideoEncoderInstancesResponse>
+	<tr2:Info>
+		<tr2:Total>1</tr2:Total>
+	</tr2:Info>
+</tr2:GetVideoEncoderInstancesResponse>`
 
 	return wrapMedia2Response(body)
 }
