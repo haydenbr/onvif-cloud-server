@@ -397,6 +397,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getAudioEncoderConfigurations   = "GetAudioEncoderConfigurations"
 		getAudioSourceConfigurations    = "GetAudioSourceConfigurations"
 		getProfiles                     = "GetProfiles"
+		getOSDOptions                   = "GetOSDOptions"
 	)
 
 	return func(c *gin.Context) {
@@ -436,11 +437,21 @@ func media2ServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getProfiles):
 			payload := buildMedia2GetProfilesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getOSDOptions):
+			payload := buildMedia2GetOSDOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			appLogger.Warn("media2 request action not recognized", "body", bodyContent)
 			c.Status(http.StatusBadRequest)
 		}
 	}
+}
+
+func buildMedia2GetOSDOptionsResponse() string {
+	body := `<tr2:GetOSDOptionsResponse>
+</tr2:GetOSDOptionsResponse>`
+
+	return wrapMedia2Response(body)
 }
 
 func buildMedia2GetAudioOutputConfigurationsResponse() string {
