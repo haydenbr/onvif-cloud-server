@@ -16,10 +16,9 @@ import (
 
 const (
 	localHTTPPort           = 8081
-	gatewayHTTPPort         = 10120
+	gatewayHTTPPort         = 18809
 	rtspHost                = "4.tcp.ngrok.io"
-	rtspPort                = 17797
-	fakeAddress             = "192.168.100.250"
+	rtspPort                = 10512
 	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
 	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
@@ -30,6 +29,7 @@ const (
 	videoSourceConfigToken  = "video_source_config1"
 	mediaProfileToken       = "media_profile1"
 	videoEncoderConfigToken = "video_encoder_config"
+	terNamespace            = "http://www.onvif.org/ver10/error"
 )
 
 var rtspURL = fmt.Sprintf("rtsp://%s:%d/test", rtspHost, rtspPort)
@@ -110,6 +110,12 @@ type transport struct {
 	Protocol string `xml:"Protocol"`
 }
 
+type media2GetStreamUriRequest struct {
+	XMLName      xml.Name `xml:"GetStreamUri"`
+	Protocol     string   `xml:"Protocol"`
+	ProfileToken string   `xml:"ProfileToken"`
+}
+
 type bodyLogWriter struct {
 	gin.ResponseWriter
 	body bytes.Buffer
@@ -123,6 +129,14 @@ func (w *bodyLogWriter) Write(b []byte) (int, error) {
 func (w *bodyLogWriter) WriteString(s string) (int, error) {
 	w.body.WriteString(s)
 	return w.ResponseWriter.WriteString(s)
+}
+
+func parseMedia2GetStreamUriRequest(raw string) (media2GetStreamUriRequest, error) {
+	var req media2GetStreamUriRequest
+	if err := xml.Unmarshal([]byte(raw), &req); err != nil {
+		return req, err
+	}
+	return req, nil
 }
 
 func deviceServiceHandler() gin.HandlerFunc {
@@ -195,7 +209,7 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tds:Capabilities>
 						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
 						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
-						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="false" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
+						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="true" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
 						<tds:Misc AuxiliaryCommands="" />
 					</tds:Capabilities>
 				</tds:Capabilities>
@@ -210,7 +224,7 @@ func buildGetServicesResponse(scheme, host string) string {
 				<tds:Capabilities>
 					<tr2:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
 						<tr2:ProfileCapabilities MaximumNumberOfProfiles="2" ConfigurationsSupported="VideoSource VideoEncoder" />
-						<tr2:StreamingCapabilities RTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" />
+						<tr2:StreamingCapabilities RTSPStreaming="true" SecureRTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" />
 						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
 						<tr2:AudioClipCapabilities MaxAudioClipLimit="0" MaxAudioClipSize="0" SupportedAudioClipFormat="" />
 					</tr2:Capabilities>
@@ -262,7 +276,7 @@ func buildGetNetworkInterfacesResponse() string {
           <tt:Enabled>true</tt:Enabled>
           <tt:Config>
             <tt:Manual>
-              <tt:Address>%s</tt:Address>
+              <tt:Address>0.0.0.0</tt:Address>
               <tt:PrefixLength>24</tt:PrefixLength>
             </tt:Manual>
             <tt:DHCP>false</tt:DHCP>
@@ -271,7 +285,7 @@ func buildGetNetworkInterfacesResponse() string {
 			</tds:NetworkInterfaces>
 		</tds:GetNetworkInterfacesResponse>
 	</s:Body>
-</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, fakeAddress)
+</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
 }
 
 func buildGetDeviceInformationResponse() string {
@@ -395,6 +409,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getVideoEncoderInstances            = "GetVideoEncoderInstances"
 		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
 		getVideoEncoderConfigurations       = "GetVideoEncoderConfigurations"
+		getStreamUri                        = "GetStreamUri"
 		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations           = "GetMetadataConfigurations"
 		getAudioEncoderConfigurations       = "GetAudioEncoderConfigurations"
@@ -442,6 +457,15 @@ func media2ServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderConfigurations):
 			payload := buildMedia2GetVideoEncoderConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getStreamUri):
+			req, err := parseMedia2GetStreamUriRequest(bodyContent)
+			if err != nil {
+				appLogger.Warn("failed to parse GetStreamUri request", "err", err)
+				c.Status(http.StatusBadRequest)
+				return
+			}
+			payload := buildMedia2GetStreamUriResponse(req.Protocol)
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderInstances):
 			payload := buildMedia2GetVideoEncoderInstancesResponse()
@@ -641,6 +665,40 @@ func buildMedia2GetVideoEncoderInstancesResponse() string {
 	return wrapMedia2Response(body)
 }
 
+func buildMedia2GetStreamUriResponse(_ string) string {
+	body := fmt.Sprintf(`<tr2:GetStreamUriResponse>
+	<tr2:Uri>%s</tr2:Uri>
+</tr2:GetStreamUriResponse>`, escapeXML(rtspURL))
+
+	return wrapMedia2Response(body)
+}
+
+// func buildMedia2InvalidStreamSetupFault(protocol string) string {
+// 	reason := fmt.Sprintf("Protocol %s not supported", protocol)
+// 	reason = escapeXML(reason)
+
+// 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+// <s:Envelope xmlns:s="%s"
+// 	xmlns:ter="%s">
+// 	<s:Body>
+// 		<s:Fault>
+// 			<s:Code>
+// 				<s:Value>s:Sender</s:Value>
+// 				<s:Subcode>
+// 					<s:Value>ter:InvalidArgVal</s:Value>
+// 					<s:Subcode>
+// 						<s:Value>ter:InvalidStreamSetup</s:Value>
+// 					</s:Subcode>
+// 				</s:Subcode>
+// 			</s:Code>
+// 			<s:Reason>
+// 				<s:Text xml:lang="en">%s</s:Text>
+// 			</s:Reason>
+// 		</s:Fault>
+// 	</s:Body>
+// </s:Envelope>`, soapNamespace, terNamespace, reason)
+// }
+
 func wrapMedia2Response(body string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s"
@@ -650,4 +708,10 @@ func wrapMedia2Response(body string) string {
 %s
 	</s:Body>
 </s:Envelope>`, soapNamespace, tr2Namespace, ttNamespace, body)
+}
+
+func escapeXML(input string) string {
+	var b strings.Builder
+	xml.EscapeText(&b, []byte(input))
+	return b.String()
 }
