@@ -191,8 +191,10 @@ func deviceServiceHandler() gin.HandlerFunc {
 			payload := buildGetUsersResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
-			appLogger.Warn("device_service request action not recognized", "body", bodyContent)
-			c.Status(http.StatusBadRequest)
+			action := detectSOAPAction(bodyContent)
+			appLogger.Warn("device_service request action not recognized", "action", action, "body", bodyContent)
+			payload := buildActionNotSupportedFault(action)
+			c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
 		}
 	}
 }
@@ -392,8 +394,10 @@ func deviceIOServiceHandler() gin.HandlerFunc {
 			payload := buildDeviceIOGetVideoSourcesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
-			appLogger.Warn("deviceio request action not recognized", "body", bodyContent)
-			c.Status(http.StatusBadRequest)
+			action := detectSOAPAction(bodyContent)
+			appLogger.Warn("deviceio request action not recognized", "action", action, "body", bodyContent)
+			payload := buildActionNotSupportedFault(action)
+			c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
 		}
 	}
 }
@@ -420,7 +424,6 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getVideoEncoderInstances            = "GetVideoEncoderInstances"
 		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
 		getVideoEncoderConfigurations       = "GetVideoEncoderConfigurations"
-		setVideoEncoderConfiguration        = "SetVideoEncoderConfiguration"
 		getStreamUri                        = "GetStreamUri"
 		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations           = "GetMetadataConfigurations"
@@ -470,9 +473,6 @@ func media2ServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getVideoEncoderConfigurations):
 			payload := buildMedia2GetVideoEncoderConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
-		case strings.Contains(bodyContent, setVideoEncoderConfiguration):
-			payload := buildActionNotSupportedFault(setVideoEncoderConfiguration)
-			c.Data(http.StatusInternalServerError, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getStreamUri):
 			req, err := parseMedia2GetStreamUriRequest(bodyContent)
 			if err != nil {
@@ -499,8 +499,10 @@ func media2ServiceHandler() gin.HandlerFunc {
 			payload := buildMedia2GetOSDOptionsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
-			appLogger.Warn("media2 request action not recognized", "body", bodyContent)
-			c.Status(http.StatusBadRequest)
+			action := detectSOAPAction(bodyContent)
+			appLogger.Warn("media2 request action not recognized", "action", action, "body", bodyContent)
+			payload := buildActionNotSupportedFault(action)
+			c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
 		}
 	}
 }
@@ -696,7 +698,10 @@ func buildMedia2GetStreamUriResponse() string {
 }
 
 func buildActionNotSupportedFault(action string) string {
-	reason := fmt.Sprintf("%s is not supported", action)
+	reason := "Action is not supported"
+	if strings.TrimSpace(action) != "" {
+		reason = fmt.Sprintf("%s is not supported", action)
+	}
 	reason = escapeXML(reason)
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
@@ -759,4 +764,24 @@ func escapeXML(input string) string {
 	var b strings.Builder
 	xml.EscapeText(&b, []byte(input))
 	return b.String()
+}
+
+func detectSOAPAction(body string) string {
+	dec := xml.NewDecoder(strings.NewReader(body))
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			if err != io.EOF {
+				appLogger.Warn("failed to parse SOAP action", "err", err)
+			}
+			return ""
+		}
+
+		switch t := tok.(type) {
+		case xml.StartElement:
+			if t.Name.Local != "" {
+				return t.Name.Local
+			}
+		}
+	}
 }
