@@ -209,8 +209,8 @@ func buildGetServicesResponse(scheme, host string) string {
 				</tds:Version>
 				<tds:Capabilities>
 					<tr2:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
-						<tr2:ProfileCapabilities MaximumNumberOfProfiles="12" ConfigurationsSupported="VideoSource VideoEncoder" />
-						<tr2:StreamingCapabilities RTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" SecureRTSPStreaming="true" />
+						<tr2:ProfileCapabilities MaximumNumberOfProfiles="2" ConfigurationsSupported="VideoSource VideoEncoder" />
+						<tr2:StreamingCapabilities RTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" />
 						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
 						<tr2:AudioClipCapabilities MaxAudioClipLimit="0" MaxAudioClipSize="0" SupportedAudioClipFormat="" />
 					</tr2:Capabilities>
@@ -394,6 +394,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getVideoSourceConfigurations        = "GetVideoSourceConfigurations"
 		getVideoEncoderInstances            = "GetVideoEncoderInstances"
 		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
+		getVideoEncoderConfigurations       = "GetVideoEncoderConfigurations"
 		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations           = "GetMetadataConfigurations"
 		getAudioEncoderConfigurations       = "GetAudioEncoderConfigurations"
@@ -438,6 +439,9 @@ func media2ServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderConfigurationOptions):
 			payload := buildMedia2GetVideoEncoderConfigurationOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderConfigurations):
+			payload := buildMedia2GetVideoEncoderConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderInstances):
 			payload := buildMedia2GetVideoEncoderInstancesResponse()
@@ -575,6 +579,31 @@ func buildMedia2GetVideoSourceConfigurationsResponse() string {
 		videoSourceConfigToken,
 		videoSourceConfigToken,
 		videoSourceToken,
+	)
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2GetVideoEncoderConfigurationsResponse() string {
+	body := fmt.Sprintf(`<tr2:GetVideoEncoderConfigurationsResponse>
+	<tr2:Configurations token="%s" GovLength="60" AnchorFrameDistance="1" Profile="Baseline">
+		<tt:Name>%s</tt:Name>
+		<tt:UseCount>1</tt:UseCount>
+		<tt:Encoding>H265</tt:Encoding>
+		<tt:Resolution>
+			<tt:Width>1920</tt:Width>
+			<tt:Height>1080</tt:Height>
+		</tt:Resolution>
+		<tt:RateControl ConstantBitRate="false">
+			<tt:FrameRateLimit>30</tt:FrameRateLimit>
+			<tt:EncodingInterval>1</tt:EncodingInterval>
+			<tt:BitrateLimit>4096</tt:BitrateLimit>
+		</tt:RateControl>
+		<tt:Quality>5</tt:Quality>
+	</tr2:Configurations>
+</tr2:GetVideoEncoderConfigurationsResponse>`,
+		videoEncoderConfigToken,
+		videoEncoderConfigToken,
 	)
 
 	return wrapMedia2Response(body)
