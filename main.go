@@ -110,10 +110,21 @@ type transport struct {
 	Protocol string `xml:"Protocol"`
 }
 
+type RTSPProtocol = string
+
+const (
+	RTSPProtocolUnicast    RTSPProtocol = "RtspUnicast"
+	RTSPProtocolMulticast  RTSPProtocol = "RtspMulticast"
+	RTSPProtocolsUnicast   RTSPProtocol = "RtspsUnicast"
+	RTSPProtocolsMulticast RTSPProtocol = "RtspsMulticast"
+	RTSPProtocolRTSP       RTSPProtocol = "RTSP"
+	RTSPProtocolOverHttp   RTSPProtocol = "RtspOverHttp"
+)
+
 type media2GetStreamUriRequest struct {
-	XMLName      xml.Name `xml:"GetStreamUri"`
-	Protocol     string   `xml:"Protocol"`
-	ProfileToken string   `xml:"ProfileToken"`
+	XMLName      xml.Name     `xml:"GetStreamUri"`
+	Protocol     RTSPProtocol `xml:"Protocol"`
+	ProfileToken string       `xml:"ProfileToken"`
 }
 
 type bodyLogWriter struct {
@@ -409,6 +420,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getVideoEncoderInstances            = "GetVideoEncoderInstances"
 		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
 		getVideoEncoderConfigurations       = "GetVideoEncoderConfigurations"
+		setVideoEncoderConfiguration        = "SetVideoEncoderConfiguration"
 		getStreamUri                        = "GetStreamUri"
 		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations           = "GetMetadataConfigurations"
@@ -458,6 +470,9 @@ func media2ServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getVideoEncoderConfigurations):
 			payload := buildMedia2GetVideoEncoderConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, setVideoEncoderConfiguration):
+			payload := buildActionNotSupportedFault(setVideoEncoderConfiguration)
+			c.Data(http.StatusInternalServerError, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getStreamUri):
 			req, err := parseMedia2GetStreamUriRequest(bodyContent)
 			if err != nil {
@@ -465,7 +480,14 @@ func media2ServiceHandler() gin.HandlerFunc {
 				c.Status(http.StatusBadRequest)
 				return
 			}
-			payload := buildMedia2GetStreamUriResponse(req.Protocol)
+
+			if req.Protocol != RTSPProtocolRTSP {
+				payload := buildMedia2InvalidStreamSetupFault(req.Protocol)
+				c.Data(http.StatusInternalServerError, soapContentType, []byte(payload))
+				return
+			}
+
+			payload := buildMedia2GetStreamUriResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderInstances):
 			payload := buildMedia2GetVideoEncoderInstancesResponse()
@@ -665,7 +687,7 @@ func buildMedia2GetVideoEncoderInstancesResponse() string {
 	return wrapMedia2Response(body)
 }
 
-func buildMedia2GetStreamUriResponse(_ string) string {
+func buildMedia2GetStreamUriResponse() string {
 	body := fmt.Sprintf(`<tr2:GetStreamUriResponse>
 	<tr2:Uri>%s</tr2:Uri>
 </tr2:GetStreamUriResponse>`, escapeXML(rtspURL))
@@ -673,31 +695,54 @@ func buildMedia2GetStreamUriResponse(_ string) string {
 	return wrapMedia2Response(body)
 }
 
-// func buildMedia2InvalidStreamSetupFault(protocol string) string {
-// 	reason := fmt.Sprintf("Protocol %s not supported", protocol)
-// 	reason = escapeXML(reason)
+func buildActionNotSupportedFault(action string) string {
+	reason := fmt.Sprintf("%s is not supported", action)
+	reason = escapeXML(reason)
 
-// 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-// <s:Envelope xmlns:s="%s"
-// 	xmlns:ter="%s">
-// 	<s:Body>
-// 		<s:Fault>
-// 			<s:Code>
-// 				<s:Value>s:Sender</s:Value>
-// 				<s:Subcode>
-// 					<s:Value>ter:InvalidArgVal</s:Value>
-// 					<s:Subcode>
-// 						<s:Value>ter:InvalidStreamSetup</s:Value>
-// 					</s:Subcode>
-// 				</s:Subcode>
-// 			</s:Code>
-// 			<s:Reason>
-// 				<s:Text xml:lang="en">%s</s:Text>
-// 			</s:Reason>
-// 		</s:Fault>
-// 	</s:Body>
-// </s:Envelope>`, soapNamespace, terNamespace, reason)
-// }
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:ter="%s">
+	<s:Body>
+		<s:Fault>
+			<s:Code>
+				<s:Value>s:Sender</s:Value>
+				<s:Subcode>
+					<s:Value>ter:ActionNotSupported</s:Value>
+				</s:Subcode>
+			</s:Code>
+			<s:Reason>
+				<s:Text xml:lang="en">%s</s:Text>
+			</s:Reason>
+		</s:Fault>
+	</s:Body>
+</s:Envelope>`, soapNamespace, terNamespace, reason)
+}
+
+func buildMedia2InvalidStreamSetupFault(protocol RTSPProtocol) string {
+	reason := fmt.Sprintf("Protocol %s not supported", protocol)
+	reason = escapeXML(reason)
+
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:ter="%s">
+	<s:Body>
+		<s:Fault>
+			<s:Code>
+				<s:Value>s:Sender</s:Value>
+				<s:Subcode>
+					<s:Value>ter:InvalidArgVal</s:Value>
+					<s:Subcode>
+						<s:Value>ter:InvalidStreamSetup</s:Value>
+					</s:Subcode>
+				</s:Subcode>
+			</s:Code>
+			<s:Reason>
+				<s:Text xml:lang="en">%s</s:Text>
+			</s:Reason>
+		</s:Fault>
+	</s:Body>
+</s:Envelope>`, soapNamespace, terNamespace, reason)
+}
 
 func wrapMedia2Response(body string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
