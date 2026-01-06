@@ -16,9 +16,9 @@ import (
 
 const (
 	localHTTPPort           = 8081
-	gatewayHTTPPort         = 18809
-	rtspHost                = "4.tcp.ngrok.io"
-	rtspPort                = 10512
+	gatewayHTTPPort         = 16041
+	rtspHost                = "0.tcp.ngrok.io"
+	rtspPort                = 19360
 	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
 	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
@@ -158,6 +158,7 @@ func deviceServiceHandler() gin.HandlerFunc {
 		getDeviceInfoAction        = "GetDeviceInformation"
 		getNetworkProtocolsAction  = "GetNetworkProtocols"
 		getUsersAction             = "GetUsers"
+		getScopesAction            = "GetScopes"
 	)
 
 	return func(c *gin.Context) {
@@ -190,6 +191,9 @@ func deviceServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getUsersAction):
 			payload := buildGetUsersResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getScopesAction):
+			payload := buildGetScopesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			action := detectSOAPAction(bodyContent)
@@ -331,6 +335,34 @@ func buildGetUsersResponse() string {
 				<tt:UserLevel>User</tt:UserLevel>
 			</tds:User>
 		</tds:GetUsersResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
+}
+
+func buildGetScopesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<tds:GetScopesResponse>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/name/CoolCamera</tt:ScopeItem>
+			</tds:Scopes>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/location/Lab</tt:ScopeItem>
+			</tds:Scopes>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/hardware/CoolCamera</tt:ScopeItem>
+			</tds:Scopes>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/Profile/T</tt:ScopeItem>
+			</tds:Scopes>
+		</tds:GetScopesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
 }
