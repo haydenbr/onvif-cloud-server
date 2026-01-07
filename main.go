@@ -465,6 +465,18 @@ func buildGetScopesResponse() string {
 				<tt:ScopeDef>Fixed</tt:ScopeDef>
 				<tt:ScopeItem>onvif://www.onvif.org/Profile/T</tt:ScopeItem>
 			</tds:Scopes>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/Profile/Streaming</tt:ScopeItem>
+			</tds:Scopes>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/type/video_encoder</tt:ScopeItem>
+			</tds:Scopes>
+			<tds:Scopes>
+				<tt:ScopeDef>Fixed</tt:ScopeDef>
+				<tt:ScopeItem>onvif://www.onvif.org/VideoSourceNumber/1</tt:ScopeItem>
+			</tds:Scopes>
 		</tds:GetScopesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
