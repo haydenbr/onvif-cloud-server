@@ -152,6 +152,19 @@ func parseMedia2GetStreamUriRequest(raw string) (media2GetStreamUriRequest, erro
 	return req, nil
 }
 
+func requestSpecifiesIncludeCapabilityFalse(body string) bool {
+	type getServicesRequest struct {
+		IncludeCapability string `xml:"IncludeCapability"`
+	}
+
+	var req getServicesRequest
+	if err := xml.Unmarshal([]byte(body), &req); err != nil {
+		return false
+	}
+
+	return strings.EqualFold(strings.TrimSpace(req.IncludeCapability), "false")
+}
+
 func deviceServiceHandler() gin.HandlerFunc {
 	const (
 		getServicesAction              = "GetServices"
@@ -184,7 +197,8 @@ func deviceServiceHandler() gin.HandlerFunc {
 		bodyContent := strings.TrimSpace(envelope.Body.Raw)
 		switch {
 		case strings.Contains(bodyContent, getServicesAction):
-			payload := buildGetServicesResponse(scheme, host)
+			includeCapabilities := requestSpecifiesIncludeCapabilityFalse(bodyContent)
+			payload := buildGetServicesResponse(scheme, host, includeCapabilities)
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getServiceCapabilitiesAction):
 			payload := buildGetServiceCapabilitiesResponse()
@@ -225,10 +239,38 @@ func deviceServiceHandler() gin.HandlerFunc {
 	}
 }
 
-func buildGetServicesResponse(scheme, host string) string {
+func buildGetServicesResponse(scheme, host string, includeCapabilities bool) string {
 	deviceAddress := fmt.Sprintf("%s://%s/onvif/device_service", scheme, host)
 	media2Address := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
 	deviceIOAddress := fmt.Sprintf("%s://%s/onvif/deviceio_service", scheme, host)
+
+	deviceCapabilitiesSection := ""
+	mediaCapabilitiesSection := ""
+	deviceIOCapabilitiesSection := ""
+	if includeCapabilities {
+		deviceCapabilitiesSection = `
+				<tds:Capabilities>
+					<tds:Capabilities>
+						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
+						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
+						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="true" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
+						<tds:Misc AuxiliaryCommands="" />
+					</tds:Capabilities>
+				</tds:Capabilities>`
+		mediaCapabilitiesSection = `
+				<tds:Capabilities>
+					<tr2:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
+						<tr2:ProfileCapabilities MaximumNumberOfProfiles="2" ConfigurationsSupported="VideoSource VideoEncoder" />
+						<tr2:StreamingCapabilities RTSPStreaming="true" SecureRTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" />
+						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
+						<tr2:AudioClipCapabilities MaxAudioClipLimit="0" MaxAudioClipSize="0" SupportedAudioClipFormat="" />
+					</tr2:Capabilities>
+				</tds:Capabilities>`
+		deviceIOCapabilitiesSection = `
+				<tds:Capabilities>
+					<tmd:Capabilities VideoSources="1" VideoOutputs="0" AudioSources="0" AudioOutputs="0" RelayOutputs="0" DigitalInputs="0" SerialPorts="0"></tmd:Capabilities>
+				</tds:Capabilities>`
+	}
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s"
@@ -244,14 +286,7 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tt:Major>25</tt:Major>
 					<tt:Minor>06</tt:Minor>
 				</tds:Version>
-				<tds:Capabilities>
-					<tds:Capabilities>
-						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
-						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
-						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="true" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
-						<tds:Misc AuxiliaryCommands="" />
-					</tds:Capabilities>
-				</tds:Capabilities>
+				%s
 			</tds:Service>
 			<tds:Service>
 				<tds:Namespace>%s</tds:Namespace>
@@ -260,21 +295,12 @@ func buildGetServicesResponse(scheme, host string) string {
 					<tt:Major>25</tt:Major>
 					<tt:Minor>06</tt:Minor>
 				</tds:Version>
-				<tds:Capabilities>
-					<tr2:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
-						<tr2:ProfileCapabilities MaximumNumberOfProfiles="2" ConfigurationsSupported="VideoSource VideoEncoder" />
-						<tr2:StreamingCapabilities RTSPStreaming="true" SecureRTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" />
-						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
-						<tr2:AudioClipCapabilities MaxAudioClipLimit="0" MaxAudioClipSize="0" SupportedAudioClipFormat="" />
-					</tr2:Capabilities>
-				</tds:Capabilities>
+				%s
 			</tds:Service>
 			<tds:Service>
 				<tds:Namespace>%s</tds:Namespace>
 				<tds:XAddr>%s</tds:XAddr>
-				<tds:Capabilities>
-					<tmd:Capabilities VideoSources="1" VideoOutputs="0" AudioSources="0" AudioOutputs="0" RelayOutputs="0" DigitalInputs="0" SerialPorts="0"></tmd:Capabilities>
-				</tds:Capabilities>
+				%s
 				<tds:Version>
 					<tt:Major>25</tt:Major>
 					<tt:Minor>06</tt:Minor>
@@ -289,10 +315,13 @@ func buildGetServicesResponse(scheme, host string) string {
 		tr2Namespace,
 		tdsNamespace,
 		deviceAddress,
+		deviceCapabilitiesSection,
 		tr2Namespace,
 		media2Address,
+		mediaCapabilitiesSection,
 		tmdNamespace,
 		deviceIOAddress,
+		deviceIOCapabilitiesSection,
 	)
 }
 
