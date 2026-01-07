@@ -581,14 +581,52 @@ func buildGetCapabilitiesResponse(scheme, host string) string {
 							<tt:Major>25</tt:Major>
 							<tt:Minor>06</tt:Minor>
 						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>17</tt:Major>
+							<tt:Minor>12</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>17</tt:Major>
+							<tt:Minor>6</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>16</tt:Major>
+							<tt:Minor>12</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>2</tt:Major>
+							<tt:Minor>60</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>2</tt:Major>
+							<tt:Minor>40</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>2</tt:Major>
+							<tt:Minor>20</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>2</tt:Major>
+							<tt:Minor>10</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:SupportedVersions>
+							<tt:Major>2</tt:Major>
+							<tt:Minor>0</tt:Minor>
+						</tt:SupportedVersions>
+						<tt:Extension>
+							<tt:HttpFirmwareUpgrade>false</tt:HttpFirmwareUpgrade>
+							<tt:HttpSystemBackup>false</tt:HttpSystemBackup>
+							<tt:HttpSystemLogging>false</tt:HttpSystemLogging>
+							<tt:HttpSupportInformation>false</tt:HttpSupportInformation>
+						</tt:Extension>
 					</tt:System>
 					<tt:IO>
 						<tt:InputConnectors>0</tt:InputConnectors>
 						<tt:RelayOutputs>0</tt:RelayOutputs>
 					</tt:IO>
 					<tt:Security>
-						<tt:TLS1.1>false</tt:TLS1.1>
-						<tt:TLS1.2>false</tt:TLS1.2>
+						<tt:TLS1.1>true</tt:TLS1.1>
+						<tt:TLS1.2>true</tt:TLS1.2>
 						<tt:OnboardKeyGeneration>false</tt:OnboardKeyGeneration>
 						<tt:AccessPolicyConfig>false</tt:AccessPolicyConfig>
 						<tt:X.509Token>false</tt:X.509Token>
@@ -733,6 +771,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
 		getVideoEncoderConfigurations       = "GetVideoEncoderConfigurations"
 		getStreamUri                        = "GetStreamUri"
+		setSynchronizationPoint             = "SetSynchronizationPoint"
 		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations           = "GetMetadataConfigurations"
 		getAnalyticsConfigurations          = "GetAnalyticsConfigurations"
@@ -792,18 +831,18 @@ func media2ServiceHandler() gin.HandlerFunc {
 			payload := buildMedia2GetVideoEncoderConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getStreamUri):
-			req, err := parseMedia2GetStreamUriRequest(bodyContent)
-			if err != nil {
-				appLogger.Warn("failed to parse GetStreamUri request", "err", err)
-				c.Status(http.StatusBadRequest)
-				return
-			}
+			// req, err := parseMedia2GetStreamUriRequest(bodyContent)
+			// if err != nil {
+			// 	appLogger.Warn("failed to parse GetStreamUri request", "err", err)
+			// 	c.Status(http.StatusBadRequest)
+			// 	return
+			// }
 
-			if req.Protocol != RTSPProtocolRTSP {
-				payload := buildMedia2InvalidStreamSetupFault(req.Protocol)
-				c.Data(http.StatusInternalServerError, soapContentType, []byte(payload))
-				return
-			}
+			// if req.Protocol != RTSPProtocolRTSP {
+			// 	payload := buildMedia2InvalidStreamSetupFault(req.Protocol)
+			// 	c.Data(http.StatusInternalServerError, soapContentType, []byte(payload))
+			// 	return
+			// }
 
 			payload := buildMedia2GetStreamUriResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
@@ -815,6 +854,9 @@ func media2ServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getOSDOptions):
 			payload := buildMedia2GetOSDOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, setSynchronizationPoint):
+			payload := buildMedia2SetSynchronizationPointResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			action := detectSOAPAction(bodyContent)
@@ -828,6 +870,13 @@ func media2ServiceHandler() gin.HandlerFunc {
 func buildMedia2GetOSDOptionsResponse() string {
 	body := `<tr2:GetOSDOptionsResponse>
 </tr2:GetOSDOptionsResponse>`
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2SetSynchronizationPointResponse() string {
+	body := `<tr2:SetSynchronizationPointResponse>
+</tr2:SetSynchronizationPointResponse>`
 
 	return wrapMedia2Response(body)
 }
