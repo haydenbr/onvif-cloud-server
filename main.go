@@ -200,6 +200,9 @@ func deviceServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getNetworkDefaultGatewayAction):
 			payload := buildGetNetworkDefaultGatewayResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getCapabilitiesAction):
+			payload := buildGetCapabilitiesResponse(scheme, host)
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getUsersAction):
 			payload := buildGetUsersResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
@@ -483,6 +486,89 @@ func buildGetNetworkDefaultGatewayResponse() string {
 		</tds:GetNetworkDefaultGatewayResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
+}
+
+func buildGetCapabilitiesResponse(scheme, host string) string {
+	deviceAddress := fmt.Sprintf("%s://%s/onvif/device_service", scheme, host)
+	media2Address := fmt.Sprintf("%s://%s/onvif/media2_service", scheme, host)
+	deviceIOAddress := fmt.Sprintf("%s://%s/onvif/deviceio_service", scheme, host)
+
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<tds:GetCapabilitiesResponse>
+			<tds:Capabilities>
+				<tt:Device>
+					<tt:XAddr>%s</tt:XAddr>
+					<tt:Network>
+						<tt:IPFilter>false</tt:IPFilter>
+						<tt:ZeroConfiguration>false</tt:ZeroConfiguration>
+						<tt:IPVersion6>false</tt:IPVersion6>
+						<tt:DynDNS>false</tt:DynDNS>
+					</tt:Network>
+					<tt:System>
+						<tt:DiscoveryResolve>false</tt:DiscoveryResolve>
+						<tt:DiscoveryBye>false</tt:DiscoveryBye>
+						<tt:RemoteDiscovery>true</tt:RemoteDiscovery>
+						<tt:SystemBackup>false</tt:SystemBackup>
+						<tt:SystemLogging>false</tt:SystemLogging>
+						<tt:FirmwareUpgrade>false</tt:FirmwareUpgrade>
+						<tt:SupportedVersions>
+							<tt:Major>25</tt:Major>
+							<tt:Minor>06</tt:Minor>
+						</tt:SupportedVersions>
+					</tt:System>
+					<tt:IO>
+						<tt:InputConnectors>0</tt:InputConnectors>
+						<tt:RelayOutputs>0</tt:RelayOutputs>
+					</tt:IO>
+					<tt:Security>
+						<tt:TLS1.1>false</tt:TLS1.1>
+						<tt:TLS1.2>false</tt:TLS1.2>
+						<tt:OnboardKeyGeneration>false</tt:OnboardKeyGeneration>
+						<tt:AccessPolicyConfig>false</tt:AccessPolicyConfig>
+						<tt:X.509Token>false</tt:X.509Token>
+						<tt:SAMLToken>false</tt:SAMLToken>
+						<tt:KerberosToken>false</tt:KerberosToken>
+						<tt:RELToken>false</tt:RELToken>
+					</tt:Security>
+				</tt:Device>
+				<tt:Media>
+					<tt:XAddr>%s</tt:XAddr>
+					<tt:StreamingCapabilities>
+						<tt:RTPMulticast>false</tt:RTPMulticast>
+						<tt:RTP_TCP>true</tt:RTP_TCP>
+						<tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP>
+					</tt:StreamingCapabilities>
+					<tt:Extension>
+						<tt:ProfileCapabilities>
+							<tt:MaximumNumberOfProfiles>2</tt:MaximumNumberOfProfiles>
+						</tt:ProfileCapabilities>
+					</tt:Extension>
+				</tt:Media>
+				<tt:Extension>
+					<tt:DeviceIO>
+						<tt:XAddr>%s</tt:XAddr>
+						<tt:VideoSources>1</tt:VideoSources>
+						<tt:VideoOutputs>0</tt:VideoOutputs>
+						<tt:AudioSources>0</tt:AudioSources>
+						<tt:AudioOutputs>0</tt:AudioOutputs>
+						<tt:RelayOutputs>0</tt:RelayOutputs>
+					</tt:DeviceIO>
+				</tt:Extension>
+			</tds:Capabilities>
+		</tds:GetCapabilitiesResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		tdsNamespace,
+		ttNamespace,
+		deviceAddress,
+		media2Address,
+		deviceIOAddress,
+	)
 }
 
 func requestScheme(c *gin.Context) string {
