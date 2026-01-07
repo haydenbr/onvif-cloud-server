@@ -163,6 +163,7 @@ func deviceServiceHandler() gin.HandlerFunc {
 		getCapabilitiesAction          = "GetCapabilities"
 		getUsersAction                 = "GetUsers"
 		getScopesAction                = "GetScopes"
+		setScopesAction                = "SetScopes"
 	)
 
 	return func(c *gin.Context) {
@@ -205,6 +206,9 @@ func deviceServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getScopesAction):
 			payload := buildGetScopesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, setScopesAction):
+			payload := buildActionNotSupportedFault(setScopesAction)
+			c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
 		default:
 			action := detectSOAPAction(bodyContent)
 			appLogger.Warn("device_service request action not recognized", "action", action, "body", bodyContent)
