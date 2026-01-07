@@ -652,6 +652,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getAudioSources                     = "GetAudioSources"
 		getVideoSources                     = "GetVideoSources"
 		getVideoSourceConfigurations        = "GetVideoSourceConfigurations"
+		getVideoSourceConfigurationOptions  = "GetVideoSourceConfigurationOptions"
 		getVideoEncoderInstances            = "GetVideoEncoderInstances"
 		getVideoEncoderConfigurationOptions = "GetVideoEncoderConfigurationOptions"
 		getVideoEncoderConfigurations       = "GetVideoEncoderConfigurations"
@@ -697,6 +698,9 @@ func media2ServiceHandler() gin.HandlerFunc {
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoSourceConfigurations):
 			payload := buildMedia2GetVideoSourceConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoSourceConfigurationOptions):
+			payload := buildMedia2GetVideoSourceConfigurationOptionsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderConfigurationOptions):
 			payload := buildMedia2GetVideoEncoderConfigurationOptionsResponse()
@@ -856,6 +860,42 @@ func buildMedia2GetVideoSourceConfigurationsResponse() string {
 	</tr2:Configurations>
 </tr2:GetVideoSourceConfigurationsResponse>`,
 		videoSourceConfigToken,
+		videoSourceConfigToken,
+		videoSourceToken,
+	)
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2GetVideoSourceConfigurationOptionsResponse() string {
+	body := fmt.Sprintf(`<tr2:GetVideoSourceConfigurationOptionsResponse>
+	<tr2:Options token="%s" MaximumNumberOfProfiles="2">
+		<tt:BoundsRange>
+			<tt:XRange>
+				<tt:Min>0</tt:Min>
+				<tt:Max>0</tt:Max>
+			</tt:XRange>
+			<tt:YRange>
+				<tt:Min>0</tt:Min>
+				<tt:Max>0</tt:Max>
+			</tt:YRange>
+			<tt:WidthRange>
+				<tt:Min>1920</tt:Min>
+				<tt:Max>1920</tt:Max>
+			</tt:WidthRange>
+			<tt:HeightRange>
+				<tt:Min>1080</tt:Min>
+				<tt:Max>1080</tt:Max>
+			</tt:HeightRange>
+		</tt:BoundsRange>
+		<tt:VideoSourceTokensAvailable>%s</tt:VideoSourceTokensAvailable>
+		<tt:Extension>
+			<tt:Rotate>
+				<tt:Mode>OFF</tt:Mode>
+			</tt:Rotate>
+		</tt:Extension>
+	</tr2:Options>
+</tr2:GetVideoSourceConfigurationOptionsResponse>`,
 		videoSourceConfigToken,
 		videoSourceToken,
 	)
