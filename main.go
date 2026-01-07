@@ -609,7 +609,11 @@ func requestScheme(c *gin.Context) string {
 }
 
 func deviceIOServiceHandler() gin.HandlerFunc {
-	const getVideoSourcesAction = "GetVideoSources"
+	const (
+		getVideoSourcesAction = "GetVideoSources"
+		getAudioSourcesAction = "GetAudioSources"
+		getAudioOutputsAction = "GetAudioOutputs"
+	)
 
 	return func(c *gin.Context) {
 		var envelope soapEnvelope
@@ -621,6 +625,12 @@ func deviceIOServiceHandler() gin.HandlerFunc {
 
 		bodyContent := strings.TrimSpace(envelope.Body.Raw)
 		switch {
+		case strings.Contains(bodyContent, getAudioSourcesAction):
+			payload := buildDeviceIOGetAudioSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioOutputsAction):
+			payload := buildDeviceIOGetAudioOutputsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoSourcesAction):
 			payload := buildDeviceIOGetVideoSourcesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
@@ -646,10 +656,35 @@ func buildDeviceIOGetVideoSourcesResponse() string {
 </s:Envelope>`, soapNamespace, tmdNamespace, ttNamespace, videoSourceToken)
 }
 
+func buildDeviceIOGetAudioSourcesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:tmd="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<tmd:GetAudioSourcesResponse>
+		</tmd:GetAudioSourcesResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, tmdNamespace, ttNamespace)
+}
+
+func buildDeviceIOGetAudioOutputsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:tmd="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<tmd:GetAudioOutputsResponse>
+		</tmd:GetAudioOutputsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, tmdNamespace, ttNamespace)
+}
+
 func media2ServiceHandler() gin.HandlerFunc {
 	const (
 		getAudioOutputConfigurations        = "GetAudioOutputConfigurations"
 		getAudioSources                     = "GetAudioSources"
+		getAudioOutputs                     = "GetAudioOutputs"
 		getVideoSources                     = "GetVideoSources"
 		getVideoSourceConfigurations        = "GetVideoSourceConfigurations"
 		getVideoSourceConfigurationOptions  = "GetVideoSourceConfigurationOptions"
@@ -659,6 +694,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 		getStreamUri                        = "GetStreamUri"
 		getMetadataConfigurationOptions     = "GetMetadataConfigurationOptions"
 		getMetadataConfigurations           = "GetMetadataConfigurations"
+		getAnalyticsConfigurations          = "GetAnalyticsConfigurations"
 		getAudioEncoderConfigurations       = "GetAudioEncoderConfigurations"
 		getAudioSourceConfigurations        = "GetAudioSourceConfigurations"
 		getProfiles                         = "GetProfiles"
@@ -678,11 +714,17 @@ func media2ServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getAudioOutputConfigurations):
 			payload := buildMedia2GetAudioOutputConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioOutputs):
+			payload := buildMedia2GetAudioOutputsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getAudioSourceConfigurations):
 			payload := buildMedia2GetAudioSourceConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getAudioEncoderConfigurations):
 			payload := buildMedia2GetAudioEncoderConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAnalyticsConfigurations):
+			payload := buildMedia2GetAnalyticsConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getMetadataConfigurations):
 			payload := buildMedia2GetMetadataConfigurationsResponse()
@@ -756,6 +798,13 @@ func buildMedia2GetAudioOutputConfigurationsResponse() string {
 	return wrapMedia2Response(body)
 }
 
+func buildMedia2GetAudioOutputsResponse() string {
+	body := `<tr2:GetAudioOutputsResponse>
+</tr2:GetAudioOutputsResponse>`
+
+	return wrapMedia2Response(body)
+}
+
 func buildMedia2GetAudioSourceConfigurationsResponse() string {
 	body := `<tr2:GetAudioSourceConfigurationsResponse>
 </tr2:GetAudioSourceConfigurationsResponse>`
@@ -766,6 +815,13 @@ func buildMedia2GetAudioSourceConfigurationsResponse() string {
 func buildMedia2GetAudioEncoderConfigurationsResponse() string {
 	body := `<tr2:GetAudioEncoderConfigurationsResponse>
 </tr2:GetAudioEncoderConfigurationsResponse>`
+
+	return wrapMedia2Response(body)
+}
+
+func buildMedia2GetAnalyticsConfigurationsResponse() string {
+	body := `<tr2:GetAnalyticsConfigurationsResponse>
+</tr2:GetAnalyticsConfigurationsResponse>`
 
 	return wrapMedia2Response(body)
 }
