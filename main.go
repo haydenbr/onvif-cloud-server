@@ -199,9 +199,6 @@ func deviceServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getNetworkDefaultGatewayAction):
 			payload := buildGetNetworkDefaultGatewayResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
-		case strings.Contains(bodyContent, getCapabilitiesAction):
-			payload := buildGetCapabilitiesResponse()
-			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getUsersAction):
 			payload := buildGetUsersResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
@@ -480,26 +477,6 @@ func buildGetNetworkDefaultGatewayResponse() string {
 	<s:Body>
 		<tds:GetNetworkDefaultGatewayResponse>
 		</tds:GetNetworkDefaultGatewayResponse>
-	</s:Body>
-</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
-}
-
-func buildGetCapabilitiesResponse() string {
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s"
-	xmlns:tds="%s"
-	xmlns:tt="%s">
-	<s:Body>
-		<tds:GetCapabilitiesResponse>
-			<tds:Capabilities>
-				<tds:Device>
-					<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
-					<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
-					<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="true" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
-					<tds:Misc AuxiliaryCommands="" />
-				</tds:Device>
-			</tds:Capabilities>
-		</tds:GetCapabilitiesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
 }
