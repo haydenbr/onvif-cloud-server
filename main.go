@@ -43,9 +43,15 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(requestLogger())
+	router.GET("/", func(c *gin.Context) {
+		c.String(http.StatusNotFound, "not found")
+	})
 	router.POST("/onvif/device_service", deviceServiceHandler())
 	router.POST("/onvif/deviceio_service", deviceIOServiceHandler())
 	router.POST("/onvif/media2_service", media2ServiceHandler())
+	router.GET("/test", func(c *gin.Context) {
+		c.String(http.StatusNotFound, "not found")
+	})
 
 	router.NoRoute(func(c *gin.Context) {
 		appLogger.Warn("NoRoute hit", "method", c.Request.Method, "path", c.Request.URL.Path)
@@ -831,12 +837,12 @@ func media2ServiceHandler() gin.HandlerFunc {
 			payload := buildMedia2GetVideoEncoderConfigurationsResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getStreamUri):
-			// req, err := parseMedia2GetStreamUriRequest(bodyContent)
-			// if err != nil {
-			// 	appLogger.Warn("failed to parse GetStreamUri request", "err", err)
-			// 	c.Status(http.StatusBadRequest)
-			// 	return
-			// }
+			req, err := parseMedia2GetStreamUriRequest(bodyContent)
+			if err != nil {
+				appLogger.Warn("failed to parse GetStreamUri request", "err", err)
+				c.Status(http.StatusBadRequest)
+				return
+			}
 
 			// if req.Protocol != RTSPProtocolRTSP {
 			// 	payload := buildMedia2InvalidStreamSetupFault(req.Protocol)
@@ -844,7 +850,7 @@ func media2ServiceHandler() gin.HandlerFunc {
 			// 	return
 			// }
 
-			payload := buildMedia2GetStreamUriResponse()
+			payload := buildMedia2GetStreamUriResponse(req.Protocol)
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, getVideoEncoderInstances):
 			payload := buildMedia2GetVideoEncoderInstancesResponse()
@@ -1106,10 +1112,15 @@ func buildMedia2GetVideoEncoderInstancesResponse() string {
 	return wrapMedia2Response(body)
 }
 
-func buildMedia2GetStreamUriResponse() string {
+func buildMedia2GetStreamUriResponse(proto RTSPProtocol) string {
+	urll := ""
+	if proto != RTSPProtocolOverHttp {
+		urll = rtspURL
+	}
+
 	body := fmt.Sprintf(`<tr2:GetStreamUriResponse>
 	<tr2:Uri>%s</tr2:Uri>
-</tr2:GetStreamUriResponse>`, escapeXML(rtspURL))
+</tr2:GetStreamUriResponse>`, escapeXML(urll))
 
 	return wrapMedia2Response(body)
 }
