@@ -1,0 +1,119 @@
+GET /media/video1 HTTP/1.0
+Content-Length: 0
+Cache-Control: no-cache
+Pragma: no-cache
+x-sessioncookie: 54dbafdd-1758-4232-a6e9-0e3cf6397864
+Host: 192.168.1.104:80
+User-Agent: AccServer[DREAMQUEST]/8.7.2.6(1764712277) 64-bit HTTP-Agent
+Accept: application/x-rtsp-tunnelled
+x-avg-id: 9eb6eae9-945b-4d24-aeed-54a1362ffadd
+
+HTTP/1.0 200 OK
+Content-Type: application/x-rtsp-tunnelled
+Cache-Control: no-store
+Pragma: no-cache
+
+POST /media/video1 HTTP/1.0
+Content-Type: application/x-rtsp-tunnelled
+Content-Length: 32767
+Expires: Sun, 09 Jan 1972 00:00:00 GMT
+Cache-Control: no-cache
+Pragma: no-cache
+x-sessioncookie: 373751f7-594f-413c-8feb-c13398a14414
+Host: 192.168.1.104:80
+User-Agent: AccServer[DREAMQUEST]/8.7.2.6(1764712277) 64-bit HTTP-Agent
+x-avg-id: 06c98158-5500-4370-a006-5c233716f628
+
+===
+
+OPTIONS rtsp://192.168.1.104/media/video1 RTSP/1.0
+CSeq: 1
+Content-Length: 0
+User-Agent: Avigilon DeviceClient[DREAMQUEST]/8.7.2.6 RTSP-Agent
+
+RTSP/1.0 200 OK
+CSeq: 1
+Public: OPTIONS,DESCRIBE,SETUP,PLAY,PAUSE,TEARDOWN,ANNOUNCE,SET_PARAMETER,GET_PARAMETER
+
+===
+
+DESCRIBE rtsp://192.168.1.104/media/video1 RTSP/1.0
+CSeq: 2
+Content-Length: 0
+User-Agent: Avigilon DeviceClient[DREAMQUEST]/8.7.2.6 RTSP-Agent
+Accept: application/sdp
+
+RTSP/1.0 401 Unauthorized
+CSeq: 2
+WWW-Authenticate: Digest realm="e4f14c8b7146",nonce="2dfb2c0c7e4021e2cf7515f06413606c", stale="FALSE"
+
+===
+
+DESCRIBE rtsp://192.168.1.104/media/video1 RTSP/1.0
+Authorization: Digest username="admin",realm="e4f14c8b7146",nonce="a4ee4321d3c4dc56b4fb82270c356a67",uri="rtsp://192.168.1.104/media/video1",response="f1a25a6a1f6c6cbe972930cca35d0810"
+CSeq: 3
+Content-Length: 0
+User-Agent: Avigilon DeviceClient[DREAMQUEST]/8.7.2.6 RTSP-Agent
+Accept: application/sdp
+
+RTSP/1.0 200 OK
+CSeq: 3
+Content-Base: rtsp://192.168.1.104/media/video1
+Content-Length: 513
+Content-Type: application/sdp
+v=0
+o=- 1001 1 IN IP4 192.168.1.104
+s=VCP IPC Realtime stream
+m=video 0 RTP/AVP 105
+c=IN IP4 192.168.1.104
+a=control:rtsp://192.168.1.104/media/video1/video
+a=rtpmap:105 H264/90000
+a=fmtp:105 profile-level-id=640028; packetization-mode=1; sprop-parameter-sets=Z2QAKKw7UDwBE/LCAAAH0AAB1MEI,aOqPLA==
+a=recvonly
+m=application 0 RTP/AVP 107
+c=IN IP4 192.168.1.104
+a=control:rtsp://192.168.1.104/media/video1/metadata
+a=rtpmap:107 vnd.onvif.metadata/90000
+a=fmtp:107 DecoderTag=h3c-v3 RTCP=0
+a=recvonly
+
+===
+
+SETUP rtsp://192.168.1.104/media/video1/video RTSP/1.0
+Authorization: Digest username="admin",realm="e4f14c8b7146",nonce="a4ee4321d3c4dc56b4fb82270c356a67",uri="rtsp://192.168.1.104/media/video1/video",response="d0b8f4b3ea7191a925383bbd997e73dd"
+CSeq: 4
+Transport: RTP/AVP/TCP;unicast;interleaved=0-1
+Content-Length: 0
+User-Agent: Avigilon DeviceClient[DREAMQUEST]/8.7.2.6 RTSP-Agent
+
+RTSP/1.0 200 OK
+CSeq: 4
+Transport: RTP/AVP/TCP;unicast;interleaved=0-1;ssrc=2689ed;mode="PLAY"
+Session: 36c640a864c640a83dd640a860c640a;timeout=60
+
+===
+
+PLAY rtsp://192.168.1.104/media/video1 RTSP/1.0
+Authorization: Digest username="admin",realm="e4f14c8b7146",nonce="a4ee4321d3c4dc56b4fb82270c356a67",uri="rtsp://192.168.1.104/media/video1",response="20d18ca518bbed770f23a90614b3dcab"
+CSeq: 5
+Session: 5a9b3ffa089b3ffa518b3ffa0c9b3ff
+Range: npt=now-
+Content-Length: 0
+User-Agent: Avigilon DeviceClient[DREAMQUEST]/8.7.2.6 RTSP-Agent
+
+RTSP/1.0 200 OK
+CSeq: 5
+Range: clock=now-
+Session: 36c640a864c640a83dd640a860c640a
+
+===
+
+PAUSE rtsp://192.168.1.104/media/video1 RTSP/1.0
+Authorization: Digest username="admin",realm="e4f14c8b7146",nonce="a4ee4321d3c4dc56b4fb82270c356a67",uri="rtsp://192.168.1.104/media/video1",response="df8f088d9e4b5e1121ed600db8a7fb65"
+CSeq: 6
+Session: 5a9b3ffa089b3ffa518b3ffa0c9b3ff
+Content-Length: 0
+User-Agent: Avigilon DeviceClient[DREAMQUEST]/8.7.2.6 RTSP-Agent
+
+===
+

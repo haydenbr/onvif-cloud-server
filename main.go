@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -22,7 +23,6 @@ const (
 	gatewayHTTPPort         = 443
 	rtspHost                = "0.tcp.ngrok.io"
 	rtspPort                = 18770
-	httpHost                = "992d-73-99-84-195.ngrok-free.app"
 	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
 	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
@@ -105,37 +105,79 @@ func requestLogger() gin.HandlerFunc {
 func requireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := strings.TrimSpace(c.GetHeader("Authorization"))
-		if header == "" {
-			c.Header("WWW-Authenticate", "Basic realm=\"ONVIF\"")
+		if !isPOCAuthAccepted(header) {
+			nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
+			c.Writer.Header().Add("WWW-Authenticate", fmt.Sprintf("Digest realm=\"ONVIF\", qop=\"auth\", nonce=\"%s\", algorithm=MD5", nonce))
+			c.Writer.Header().Add("WWW-Authenticate", "Basic realm=\"ONVIF\"")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
-		} else {
-			appLogger.Info("got auth header", "header", header)
 		}
+
+		appLogger.Info("auth accepted", "scheme", detectAuthScheme(header))
 
 		c.Next()
 	}
+}
+
+func isPOCAuthAccepted(header string) bool {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return false
+	}
+
+	lowerHeader := strings.ToLower(header)
+	if strings.HasPrefix(lowerHeader, "basic ") {
+		return isPOCBasicAuthAccepted(strings.TrimSpace(header[len("Basic "):]))
+	}
+
+	if strings.HasPrefix(lowerHeader, "digest ") {
+		return isPOCDigestAuthAccepted(strings.TrimSpace(header[len("Digest "):]))
+	}
+
+	return false
+}
+
+func isPOCBasicAuthAccepted(encodedCredentials string) bool {
+	if encodedCredentials == "" {
+		return false
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(encodedCredentials)
+	if err != nil {
+		return false
+	}
+
+	username, password, ok := strings.Cut(string(decoded), ":")
+	if !ok {
+		return false
+	}
+
+	return strings.TrimSpace(username) != "" && password != ""
+}
+
+func isPOCDigestAuthAccepted(params string) bool {
+	lowerParams := strings.ToLower(params)
+	return strings.Contains(lowerParams, "username=") &&
+		strings.Contains(lowerParams, "uri=") &&
+		strings.Contains(lowerParams, "nonce=") &&
+		strings.Contains(lowerParams, "response=")
+}
+
+func detectAuthScheme(header string) string {
+	lowerHeader := strings.ToLower(strings.TrimSpace(header))
+	if strings.HasPrefix(lowerHeader, "basic ") {
+		return "basic"
+	}
+	if strings.HasPrefix(lowerHeader, "digest ") {
+		return "digest"
+	}
+	return "unknown"
 }
 
 type soapEnvelope struct {
 	Body struct {
 		Raw string `xml:",innerxml"`
 	} `xml:"Body"`
-}
-
-type getStreamUriRequest struct {
-	XMLName      xml.Name    `xml:"GetStreamUri"`
-	StreamSetup  streamSetup `xml:"StreamSetup"`
-	ProfileToken string      `xml:"ProfileToken"`
-}
-
-type streamSetup struct {
-	Stream    string    `xml:"Stream"`
-	Transport transport `xml:"Transport"`
-}
-
-type transport struct {
-	Protocol string `xml:"Protocol"`
 }
 
 type RTSPProtocol = string
@@ -1178,32 +1220,6 @@ func buildActionNotSupportedFault(action string) string {
 				<s:Value>s:Sender</s:Value>
 				<s:Subcode>
 					<s:Value>ter:ActionNotSupported</s:Value>
-				</s:Subcode>
-			</s:Code>
-			<s:Reason>
-				<s:Text xml:lang="en">%s</s:Text>
-			</s:Reason>
-		</s:Fault>
-	</s:Body>
-</s:Envelope>`, soapNamespace, terNamespace, reason)
-}
-
-func buildMedia2InvalidStreamSetupFault(protocol RTSPProtocol) string {
-	reason := fmt.Sprintf("Protocol %s not supported", protocol)
-	reason = escapeXML(reason)
-
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="%s"
-	xmlns:ter="%s">
-	<s:Body>
-		<s:Fault>
-			<s:Code>
-				<s:Value>s:Sender</s:Value>
-				<s:Subcode>
-					<s:Value>ter:InvalidArgVal</s:Value>
-					<s:Subcode>
-						<s:Value>ter:InvalidStreamSetup</s:Value>
-					</s:Subcode>
 				</s:Subcode>
 			</s:Code>
 			<s:Reason>
