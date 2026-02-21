@@ -15,11 +15,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// https://992d-73-99-84-195.ngrok-free.app
+
 const (
 	localHTTPPort           = 8081
-	gatewayHTTPPort         = 16041
+	gatewayHTTPPort         = 443
 	rtspHost                = "0.tcp.ngrok.io"
-	rtspPort                = 19360
+	rtspPort                = 18770
+	httpHost                = "992d-73-99-84-195.ngrok-free.app"
 	soapNamespace           = "http://www.w3.org/2003/05/soap-envelope"
 	tdsNamespace            = "http://www.onvif.org/ver10/device/wsdl"
 	tr2Namespace            = "http://www.onvif.org/ver20/media/wsdl"
@@ -43,6 +46,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(requestLogger())
+	router.Use(requireAuth())
 	router.GET("/", func(c *gin.Context) {
 		c.String(http.StatusNotFound, "not found")
 	})
@@ -94,6 +98,22 @@ func requestLogger() gin.HandlerFunc {
 			"response_size", c.Writer.Size(),
 			"response_body", blw.body.String(),
 		)
+	}
+}
+
+// requireAuth enforces Basic auth header presence to trigger ONVIF security challenges early.
+func requireAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := strings.TrimSpace(c.GetHeader("Authorization"))
+		if header == "" {
+			c.Header("WWW-Authenticate", "Basic realm=\"ONVIF\"")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		} else {
+			appLogger.Info("got auth header", "header", header)
+		}
+
+		c.Next()
 	}
 }
 
@@ -184,6 +204,7 @@ func deviceServiceHandler() gin.HandlerFunc {
 		getUsersAction                 = "GetUsers"
 		getScopesAction                = "GetScopes"
 		setScopesAction                = "SetScopes"
+		getHostnameAction              = "GetHostname"
 	)
 
 	return func(c *gin.Context) {
@@ -233,6 +254,9 @@ func deviceServiceHandler() gin.HandlerFunc {
 		case strings.Contains(bodyContent, getScopesAction):
 			payload := buildGetScopesResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getHostnameAction):
+			payload := buildGetHostnameResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		case strings.Contains(bodyContent, setScopesAction):
 			payload := buildActionNotSupportedFault(setScopesAction)
 			c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
@@ -266,7 +290,7 @@ func buildGetServicesResponse(scheme, host string, includeCapabilities bool) str
 		mediaCapabilitiesSection = `
 				<tds:Capabilities>
 					<tr2:Capabilities SnapshotUri="false" Rotation="false" VideoSourceMode="false" OSD="false" TemporaryOSDText="false" Mask="false" SourceMask="false" WebRTC="0">
-						<tr2:ProfileCapabilities MaximumNumberOfProfiles="2" ConfigurationsSupported="VideoSource VideoEncoder" />
+						<tr2:ProfileCapabilities MaximumNumberOfProfiles="1" ConfigurationsSupported="VideoSource VideoEncoder" />
 						<tr2:StreamingCapabilities RTSPStreaming="true" SecureRTSPStreaming="true" RTPMulticast="false" RTP_RTSP_TCP="true" NonAggregateControl="false" RTSPWebSocketUri="" AutoStartMulticast="false" />
 						<tr2:MediaSigningCapabilities MediaSigningSupported="false" />
 						<tr2:AudioClipCapabilities MaxAudioClipLimit="0" MaxAudioClipSize="0" SupportedAudioClipFormat="" />
@@ -544,6 +568,22 @@ func buildGetNetworkProtocolsResponse() string {
 </s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace, gatewayHTTPPort, rtspPort)
 }
 
+func buildGetHostnameResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:tds="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<tds:GetHostnameResponse>
+			<tds:HostnameInformation>
+				<tt:FromDHCP>false</tt:FromDHCP>
+				<tt:Name>my-camera</tt:Name>
+			</tds:HostnameInformation>
+		</tds:GetHostnameResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, tdsNamespace, ttNamespace)
+}
+
 func buildGetNetworkDefaultGatewayResponse() string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope xmlns:s="%s"
@@ -579,45 +619,13 @@ func buildGetCapabilitiesResponse(scheme, host string) string {
 					<tt:System>
 						<tt:DiscoveryResolve>false</tt:DiscoveryResolve>
 						<tt:DiscoveryBye>false</tt:DiscoveryBye>
-						<tt:RemoteDiscovery>true</tt:RemoteDiscovery>
+						<tt:RemoteDiscovery>false</tt:RemoteDiscovery>
 						<tt:SystemBackup>false</tt:SystemBackup>
 						<tt:SystemLogging>false</tt:SystemLogging>
 						<tt:FirmwareUpgrade>false</tt:FirmwareUpgrade>
 						<tt:SupportedVersions>
 							<tt:Major>25</tt:Major>
 							<tt:Minor>06</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>17</tt:Major>
-							<tt:Minor>12</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>17</tt:Major>
-							<tt:Minor>6</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>16</tt:Major>
-							<tt:Minor>12</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>2</tt:Major>
-							<tt:Minor>60</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>2</tt:Major>
-							<tt:Minor>40</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>2</tt:Major>
-							<tt:Minor>20</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>2</tt:Major>
-							<tt:Minor>10</tt:Minor>
-						</tt:SupportedVersions>
-						<tt:SupportedVersions>
-							<tt:Major>2</tt:Major>
-							<tt:Minor>0</tt:Minor>
 						</tt:SupportedVersions>
 						<tt:Extension>
 							<tt:HttpFirmwareUpgrade>false</tt:HttpFirmwareUpgrade>
@@ -650,7 +658,7 @@ func buildGetCapabilitiesResponse(scheme, host string) string {
 					</tt:StreamingCapabilities>
 					<tt:Extension>
 						<tt:ProfileCapabilities>
-							<tt:MaximumNumberOfProfiles>2</tt:MaximumNumberOfProfiles>
+							<tt:MaximumNumberOfProfiles>1</tt:MaximumNumberOfProfiles>
 						</tt:ProfileCapabilities>
 					</tt:Extension>
 				</tt:Media>
