@@ -38,6 +38,7 @@ const (
 )
 
 var rtspURL = fmt.Sprintf("rtsp://%s:%d/test", rtspHost, rtspPort)
+var rtspOverHTTPURL = "https://992d-73-99-84-195.ngrok-free.app/test"
 
 var appLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -193,6 +194,21 @@ const (
 	RTSPProtocolOverHttp   RTSPProtocol = "RtspOverHttp"
 )
 
+type media1StreamSetup struct {
+	Stream    string          `xml:"Stream"`
+	Transport media1Transport `xml:"Transport"`
+}
+
+type media1Transport struct {
+	Protocol string `xml:"Protocol"`
+}
+
+type media1GetStreamUriRequest struct {
+	XMLName      xml.Name          `xml:"GetStreamUri"`
+	StreamSetup  media1StreamSetup `xml:"StreamSetup"`
+	ProfileToken string            `xml:"ProfileToken"`
+}
+
 type media2GetStreamUriRequest struct {
 	XMLName      xml.Name     `xml:"GetStreamUri"`
 	Protocol     RTSPProtocol `xml:"Protocol"`
@@ -212,6 +228,14 @@ func (w *bodyLogWriter) Write(b []byte) (int, error) {
 func (w *bodyLogWriter) WriteString(s string) (int, error) {
 	w.body.WriteString(s)
 	return w.ResponseWriter.WriteString(s)
+}
+
+func parseMedia1GetStreamUriRequest(raw string) (media1GetStreamUriRequest, error) {
+	var req media1GetStreamUriRequest
+	if err := xml.Unmarshal([]byte(raw), &req); err != nil {
+		return req, err
+	}
+	return req, nil
 }
 
 func parseMedia2GetStreamUriRequest(raw string) (media2GetStreamUriRequest, error) {
@@ -657,7 +681,7 @@ func buildGetHostnameResponse() string {
 		<tds:GetHostnameResponse>
 			<tds:HostnameInformation>
 				<tt:FromDHCP>false</tt:FromDHCP>
-				<tt:Name>my-camera</tt:Name>
+				<tt:Name>2764-73-99-84-195.ngrok-free.app</tt:Name>
 			</tds:HostnameInformation>
 		</tds:GetHostnameResponse>
 	</s:Body>
@@ -855,7 +879,20 @@ func buildDeviceIOGetAudioOutputsResponse() string {
 
 func mediaServiceHandler() gin.HandlerFunc {
 	const (
-		getServiceCapabilitiesAction = "GetServiceCapabilities"
+		getServiceCapabilitiesAction                     = "GetServiceCapabilities"
+		getProfilesAction                                = "GetProfiles"
+		getVideoEncoderConfigurationOptionsAction        = "GetVideoEncoderConfigurationOptions"
+		getVideoEncoderConfigurationsAction              = "GetVideoEncoderConfigurations"
+		getVideoEncoderConfigurationAction               = "GetVideoEncoderConfiguration"
+		getCompatibleVideoSourceConfigurationsAction     = "GetCompatibleVideoSourceConfigurations"
+		getVideoSourceConfigurationsAction               = "GetVideoSourceConfigurations"
+		getVideoSourcesAction                            = "GetVideoSources"
+		getAudioEncoderConfigurationOptionsAction        = "GetAudioEncoderConfigurationOptions"
+		getAudioDecoderConfigurationOptionsAction        = "GetAudioDecoderConfigurationOptions"
+		getGuaranteedNumberOfVideoEncoderInstancesAction = "GetGuaranteedNumberOfVideoEncoderInstances"
+		getStreamUriAction                               = "GetStreamUri"
+		createProfileAction                              = "CreateProfile"
+		addVideoSourceConfigurationAction                = "AddVideoSourceConfiguration"
 	)
 
 	return func(c *gin.Context) {
@@ -870,6 +907,65 @@ func mediaServiceHandler() gin.HandlerFunc {
 		switch {
 		case strings.Contains(bodyContent, getServiceCapabilitiesAction):
 			payload := buildMediaGetServiceCapabilitiesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderConfigurationOptionsAction):
+			payload := buildMediaGetVideoEncoderConfigurationOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderConfigurationsAction):
+			payload := buildMediaGetVideoEncoderConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoEncoderConfigurationAction):
+			payload := buildMediaGetVideoEncoderConfigurationResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getCompatibleVideoSourceConfigurationsAction):
+			payload := buildMediaGetCompatibleVideoSourceConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoSourceConfigurationsAction):
+			payload := buildMediaGetVideoSourceConfigurationsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getVideoSourcesAction):
+			payload := buildMediaGetVideoSourcesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioEncoderConfigurationOptionsAction):
+			payload := buildMediaGetAudioEncoderConfigurationOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getAudioDecoderConfigurationOptionsAction):
+			payload := buildMediaGetAudioDecoderConfigurationOptionsResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getGuaranteedNumberOfVideoEncoderInstancesAction):
+			payload := buildMediaGetGuaranteedNumberOfVideoEncoderInstancesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, createProfileAction):
+			req, err := parseMediaCreateProfileRequest(bodyContent)
+			if err != nil {
+				appLogger.Warn("failed to parse CreateProfile request", "err", err)
+				c.Status(http.StatusBadRequest)
+				return
+			}
+			payload := buildMediaCreateProfileResponse(req.Name, req.Token)
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, addVideoSourceConfigurationAction):
+			payload := buildMediaAddVideoSourceConfigurationResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getProfilesAction):
+			payload := buildMediaGetProfilesResponse()
+			c.Data(http.StatusOK, soapContentType, []byte(payload))
+		case strings.Contains(bodyContent, getStreamUriAction):
+			req, err := parseMedia1GetStreamUriRequest(bodyContent)
+			if err != nil {
+				appLogger.Warn("failed to parse GetStreamUri request", "err", err)
+				c.Status(http.StatusBadRequest)
+				return
+			}
+
+			protocol := req.StreamSetup.Transport.Protocol
+			if !strings.EqualFold(protocol, "HTTP") {
+				payload := buildMediaInvalidStreamSetupFault(protocol)
+				c.Data(http.StatusBadRequest, soapContentType, []byte(payload))
+				return
+			}
+
+			payload := buildMediaGetStreamUriResponse()
 			c.Data(http.StatusOK, soapContentType, []byte(payload))
 		default:
 			action := detectSOAPAction(bodyContent)
@@ -893,6 +989,355 @@ func buildMediaGetServiceCapabilitiesResponse() string {
 		</trt:GetServiceCapabilitiesResponse>
 	</s:Body>
 </s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func buildMediaGetVideoEncoderConfigurationOptionsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetVideoEncoderConfigurationOptionsResponse>
+			<trt:Options>
+				<tt:QualityRange>
+					<tt:Min>1</tt:Min>
+					<tt:Max>10</tt:Max>
+				</tt:QualityRange>
+				<tt:H264>
+					<tt:ResolutionsAvailable>
+						<tt:Width>1920</tt:Width>
+						<tt:Height>1080</tt:Height>
+					</tt:ResolutionsAvailable>
+					<tt:GovLengthRange>
+						<tt:Min>30</tt:Min>
+						<tt:Max>120</tt:Max>
+					</tt:GovLengthRange>
+					<tt:FrameRateRange>
+						<tt:Min>1</tt:Min>
+						<tt:Max>30</tt:Max>
+					</tt:FrameRateRange>
+					<tt:EncodingIntervalRange>
+						<tt:Min>1</tt:Min>
+						<tt:Max>1</tt:Max>
+					</tt:EncodingIntervalRange>
+					<tt:H264ProfilesSupported>Baseline</tt:H264ProfilesSupported>
+					<tt:H264ProfilesSupported>Main</tt:H264ProfilesSupported>
+					<tt:H264ProfilesSupported>High</tt:H264ProfilesSupported>
+				</tt:H264>
+			</trt:Options>
+		</trt:GetVideoEncoderConfigurationOptionsResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace, ttNamespace)
+}
+
+func buildMediaGetVideoEncoderConfigurationsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetVideoEncoderConfigurationsResponse>
+			<trt:Configurations token="%s">
+				<tt:Name>%s</tt:Name>
+				<tt:UseCount>1</tt:UseCount>
+				<tt:Encoding>H264</tt:Encoding>
+				<tt:Resolution>
+					<tt:Width>1920</tt:Width>
+					<tt:Height>1080</tt:Height>
+				</tt:Resolution>
+				<tt:Quality>5</tt:Quality>
+				<tt:RateControl>
+					<tt:FrameRateLimit>30</tt:FrameRateLimit>
+					<tt:EncodingInterval>1</tt:EncodingInterval>
+					<tt:BitrateLimit>4096</tt:BitrateLimit>
+				</tt:RateControl>
+				<tt:H264>
+					<tt:GovLength>60</tt:GovLength>
+					<tt:H264Profile>Baseline</tt:H264Profile>
+				</tt:H264>
+				<tt:Multicast>
+					<tt:Address>
+						<tt:Type>IPv4</tt:Type>
+						<tt:IPv4Address>0.0.0.0</tt:IPv4Address>
+					</tt:Address>
+					<tt:Port>0</tt:Port>
+					<tt:TTL>0</tt:TTL>
+					<tt:AutoStart>false</tt:AutoStart>
+				</tt:Multicast>
+				<tt:SessionTimeout>PT60S</tt:SessionTimeout>
+			</trt:Configurations>
+		</trt:GetVideoEncoderConfigurationsResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		videoEncoderConfigToken,
+		videoEncoderConfigToken,
+	)
+}
+
+func buildMediaGetVideoEncoderConfigurationResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetVideoEncoderConfigurationResponse>
+			<trt:Configuration token="%s">
+				<tt:Name>%s</tt:Name>
+				<tt:UseCount>1</tt:UseCount>
+				<tt:Encoding>H264</tt:Encoding>
+				<tt:Resolution>
+					<tt:Width>1920</tt:Width>
+					<tt:Height>1080</tt:Height>
+				</tt:Resolution>
+				<tt:Quality>5</tt:Quality>
+				<tt:RateControl>
+					<tt:FrameRateLimit>30</tt:FrameRateLimit>
+					<tt:EncodingInterval>1</tt:EncodingInterval>
+					<tt:BitrateLimit>4096</tt:BitrateLimit>
+				</tt:RateControl>
+				<tt:H264>
+					<tt:GovLength>60</tt:GovLength>
+					<tt:H264Profile>Baseline</tt:H264Profile>
+				</tt:H264>
+				<tt:Multicast>
+					<tt:Address>
+						<tt:Type>IPv4</tt:Type>
+						<tt:IPv4Address>0.0.0.0</tt:IPv4Address>
+					</tt:Address>
+					<tt:Port>0</tt:Port>
+					<tt:TTL>0</tt:TTL>
+					<tt:AutoStart>false</tt:AutoStart>
+				</tt:Multicast>
+				<tt:SessionTimeout>PT60S</tt:SessionTimeout>
+			</trt:Configuration>
+		</trt:GetVideoEncoderConfigurationResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		videoEncoderConfigToken,
+		videoEncoderConfigToken,
+	)
+}
+
+func buildMediaGetAudioEncoderConfigurationOptionsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s">
+	<s:Body>
+		<trt:GetAudioEncoderConfigurationOptionsResponse />
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func buildMediaGetAudioDecoderConfigurationOptionsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s">
+	<s:Body>
+		<trt:GetAudioDecoderConfigurationOptionsResponse />
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func buildMediaGetGuaranteedNumberOfVideoEncoderInstancesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s">
+	<s:Body>
+		<trt:GetGuaranteedNumberOfVideoEncoderInstancesResponse>
+			<trt:TotalNumber>1</trt:TotalNumber>
+			<trt:H264>1</trt:H264>
+		</trt:GetGuaranteedNumberOfVideoEncoderInstancesResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func buildMediaGetVideoSourcesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetVideoSourcesResponse>
+			<trt:VideoSources token="%s">
+				<tt:Framerate>30</tt:Framerate>
+				<tt:Resolution>
+					<tt:Width>1920</tt:Width>
+					<tt:Height>1080</tt:Height>
+				</tt:Resolution>
+			</trt:VideoSources>
+		</trt:GetVideoSourcesResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		videoSourceToken,
+	)
+}
+
+func buildMediaGetCompatibleVideoSourceConfigurationsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetCompatibleVideoSourceConfigurationsResponse>
+			<trt:Configurations token="%s">
+				<tt:Name>%s</tt:Name>
+				<tt:UseCount>1</tt:UseCount>
+				<tt:SourceToken>%s</tt:SourceToken>
+				<tt:Bounds x="0" y="0" width="1920" height="1080" />
+			</trt:Configurations>
+		</trt:GetCompatibleVideoSourceConfigurationsResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		videoSourceConfigToken,
+		videoSourceConfigToken,
+		videoSourceToken,
+	)
+}
+
+func buildMediaGetVideoSourceConfigurationsResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetVideoSourceConfigurationsResponse>
+			<trt:Configurations token="%s">
+				<tt:Name>%s</tt:Name>
+				<tt:UseCount>1</tt:UseCount>
+				<tt:SourceToken>%s</tt:SourceToken>
+				<tt:Bounds x="0" y="0" width="1920" height="1080" />
+			</trt:Configurations>
+		</trt:GetVideoSourceConfigurationsResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		videoSourceConfigToken,
+		videoSourceConfigToken,
+		videoSourceToken,
+	)
+}
+
+type mediaCreateProfileRequest struct {
+	XMLName xml.Name `xml:"CreateProfile"`
+	Name    string   `xml:"Name"`
+	Token   string   `xml:"Token"`
+}
+
+func parseMediaCreateProfileRequest(raw string) (mediaCreateProfileRequest, error) {
+	var req mediaCreateProfileRequest
+	if err := xml.Unmarshal([]byte(raw), &req); err != nil {
+		return req, err
+	}
+	return req, nil
+}
+
+func buildMediaCreateProfileResponse(name, token string) string {
+	if token == "" {
+		token = "profile_" + name
+	}
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:CreateProfileResponse>
+			<trt:Profile token="%s" fixed="false">
+				<tt:Name>%s</tt:Name>
+			</trt:Profile>
+		</trt:CreateProfileResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		token,
+		name,
+	)
+}
+
+func buildMediaAddVideoSourceConfigurationResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s">
+	<s:Body>
+		<trt:AddVideoSourceConfigurationResponse/>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace)
+}
+
+func buildMediaGetProfilesResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetProfilesResponse>
+			<trt:Profiles token="%s" fixed="true">
+				<tt:Name>%s</tt:Name>
+				<tt:VideoSourceConfiguration token="%s">
+					<tt:Name>%s</tt:Name>
+					<tt:UseCount>1</tt:UseCount>
+					<tt:SourceToken>%s</tt:SourceToken>
+					<tt:Bounds x="0" y="0" width="1920" height="1080" />
+				</tt:VideoSourceConfiguration>
+				<tt:VideoEncoderConfiguration token="%s">
+					<tt:Name>%s</tt:Name>
+					<tt:UseCount>1</tt:UseCount>
+					<tt:Encoding>H264</tt:Encoding>
+					<tt:Resolution>
+						<tt:Width>1920</tt:Width>
+						<tt:Height>1080</tt:Height>
+					</tt:Resolution>
+					<tt:Quality>5</tt:Quality>
+					<tt:RateControl>
+						<tt:FrameRateLimit>30</tt:FrameRateLimit>
+						<tt:EncodingInterval>1</tt:EncodingInterval>
+						<tt:BitrateLimit>4096</tt:BitrateLimit>
+					</tt:RateControl>
+					<tt:H264>
+						<tt:GovLength>60</tt:GovLength>
+						<tt:H264Profile>Baseline</tt:H264Profile>
+					</tt:H264>
+					<tt:Multicast>
+						<tt:Address>
+							<tt:Type>IPv4</tt:Type>
+							<tt:IPv4Address>0.0.0.0</tt:IPv4Address>
+						</tt:Address>
+						<tt:Port>0</tt:Port>
+						<tt:TTL>0</tt:TTL>
+						<tt:AutoStart>false</tt:AutoStart>
+					</tt:Multicast>
+					<tt:SessionTimeout>PT60S</tt:SessionTimeout>
+				</tt:VideoEncoderConfiguration>
+			</trt:Profiles>
+		</trt:GetProfilesResponse>
+	</s:Body>
+</s:Envelope>`,
+		soapNamespace,
+		trtNamespace,
+		ttNamespace,
+		mediaProfileToken,
+		mediaProfileToken,
+		videoSourceConfigToken,
+		videoSourceConfigToken,
+		videoSourceToken,
+		videoEncoderConfigToken,
+		videoEncoderConfigToken,
+	)
 }
 
 func media2ServiceHandler() gin.HandlerFunc {
@@ -1080,7 +1525,7 @@ func buildMedia2GetProfilesResponse() string {
 			<tr2:VideoEncoder token="%s" GovLength="60" AnchorFrameDistance="1" Profile="Baseline">
 				<tt:Name>%s</tt:Name>
 				<tt:UseCount>1</tt:UseCount>
-				<tt:Encoding>H265</tt:Encoding>
+				<tt:Encoding>H264</tt:Encoding>
 				<tt:Resolution>
 					<tt:Width>1920</tt:Width>
 					<tt:Height>1080</tt:Height>
@@ -1151,7 +1596,7 @@ func buildMedia2GetVideoSourceConfigurationsResponse() string {
 
 func buildMedia2GetVideoSourceConfigurationOptionsResponse() string {
 	body := fmt.Sprintf(`<tr2:GetVideoSourceConfigurationOptionsResponse>
-	<tr2:Options token="%s" MaximumNumberOfProfiles="2">
+	<tr2:Options token="%s" MaximumNumberOfProfiles="1">
 		<tt:BoundsRange>
 			<tt:XRange>
 				<tt:Min>0</tt:Min>
@@ -1190,7 +1635,7 @@ func buildMedia2GetVideoEncoderConfigurationsResponse() string {
 	<tr2:Configurations token="%s" GovLength="60" AnchorFrameDistance="1" Profile="Baseline">
 		<tt:Name>%s</tt:Name>
 		<tt:UseCount>1</tt:UseCount>
-		<tt:Encoding>H265</tt:Encoding>
+		<tt:Encoding>H264</tt:Encoding>
 		<tt:Resolution>
 			<tt:Width>1920</tt:Width>
 			<tt:Height>1080</tt:Height>
@@ -1213,7 +1658,7 @@ func buildMedia2GetVideoEncoderConfigurationsResponse() string {
 func buildMedia2GetVideoEncoderConfigurationOptionsResponse() string {
 	body := `<tr2:GetVideoEncoderConfigurationOptionsResponse>
 	<tr2:Options ConstantBitRateSupported="true" ProfilesSupported="Main" FrameRatesSupported="30 25 20 15 10" GovLengthRange="30 120">
-		<tt:Encoding>H265</tt:Encoding>
+		<tt:Encoding>H264</tt:Encoding>
 		<tt:QualityRange>
 			<tt:Min>1</tt:Min>
 			<tt:Max>10</tt:Max>
@@ -1240,6 +1685,49 @@ func buildMedia2GetVideoEncoderInstancesResponse() string {
 </tr2:GetVideoEncoderInstancesResponse>`
 
 	return wrapMedia2Response(body)
+}
+
+func buildMediaGetStreamUriResponse() string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:trt="%s"
+	xmlns:tt="%s">
+	<s:Body>
+		<trt:GetStreamUriResponse>
+			<trt:MediaUri>
+				<tt:Uri>%s</tt:Uri>
+				<tt:InvalidAfterConnect>false</tt:InvalidAfterConnect>
+				<tt:InvalidAfterReboot>false</tt:InvalidAfterReboot>
+				<tt:Timeout>PT0S</tt:Timeout>
+			</trt:MediaUri>
+		</trt:GetStreamUriResponse>
+	</s:Body>
+</s:Envelope>`, soapNamespace, trtNamespace, ttNamespace, escapeXML(rtspOverHTTPURL))
+}
+
+func buildMediaInvalidStreamSetupFault(protocol string) string {
+	reason := escapeXML(fmt.Sprintf("Transport protocol %s is not supported, only HTTP is supported", protocol))
+
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="%s"
+	xmlns:ter="%s">
+	<s:Body>
+		<s:Fault>
+			<s:Code>
+				<s:Value>s:Sender</s:Value>
+				<s:Subcode>
+					<s:Value>ter:InvalidArgVal</s:Value>
+					<s:Subcode>
+						<s:Value>ter:InvalidStreamSetup</s:Value>
+					</s:Subcode>
+				</s:Subcode>
+			</s:Code>
+			<s:Reason>
+				<s:Text xml:lang="en">%s</s:Text>
+			</s:Reason>
+		</s:Fault>
+	</s:Body>
+</s:Envelope>`, soapNamespace, terNamespace, reason)
 }
 
 func buildMedia2GetStreamUriResponse(proto RTSPProtocol) string {
