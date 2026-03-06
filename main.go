@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -15,8 +18,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-// https://992d-73-99-84-195.ngrok-free.app
 
 const (
 	localHTTPPort           = 8081
@@ -38,7 +39,7 @@ const (
 )
 
 var rtspURL = fmt.Sprintf("rtsp://%s:%d/test", rtspHost, rtspPort)
-var rtspOverHTTPURL = "https://992d-73-99-84-195.ngrok-free.app/test"
+var rtspOverHTTPURL = "https://fawnlike-bucolically-kimbra.ngrok-free.dev/test"
 
 var appLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -48,7 +49,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(requestLogger())
-	// router.Use(requireAuth())
+	router.Use(requireAuth())
 	router.GET("/", func(c *gin.Context) {
 		c.String(http.StatusNotFound, "not found")
 	})
@@ -104,14 +105,15 @@ func requestLogger() gin.HandlerFunc {
 	}
 }
 
-// requireAuth enforces Basic auth header presence to trigger ONVIF security challenges early.
+const expectedPassword = "password"
+
+// requireAuth enforces auth and validates credentials against the expected password.
 func requireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := strings.TrimSpace(c.GetHeader("Authorization"))
-		if !isPOCAuthAccepted(header) {
+		if !isPOCAuthAccepted(header, c.Request.Method) {
 			nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
-			c.Writer.Header().Add("WWW-Authenticate", fmt.Sprintf("Digest realm=\"ONVIF\", qop=\"auth\", nonce=\"%s\", algorithm=MD5", nonce))
-			c.Writer.Header().Add("WWW-Authenticate", "Basic realm=\"ONVIF\"")
+			c.Writer.Header().Add("WWW-Authenticate", fmt.Sprintf("Digest realm=\"ONVIF\", qop=\"auth\", nonce=\"%s\", algorithm=SHA-256", nonce))
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -122,7 +124,7 @@ func requireAuth() gin.HandlerFunc {
 	}
 }
 
-func isPOCAuthAccepted(header string) bool {
+func isPOCAuthAccepted(header string, method string) bool {
 	header = strings.TrimSpace(header)
 	if header == "" {
 		return false
@@ -134,7 +136,7 @@ func isPOCAuthAccepted(header string) bool {
 	}
 
 	if strings.HasPrefix(lowerHeader, "digest ") {
-		return isPOCDigestAuthAccepted(strings.TrimSpace(header[len("Digest "):]))
+		return isPOCDigestAuthAccepted(strings.TrimSpace(header[len("Digest "):]), method)
 	}
 
 	return false
@@ -155,15 +157,58 @@ func isPOCBasicAuthAccepted(encodedCredentials string) bool {
 		return false
 	}
 
-	return strings.TrimSpace(username) != "" && password != ""
+	return strings.TrimSpace(username) != "" && password == expectedPassword
 }
 
-func isPOCDigestAuthAccepted(params string) bool {
-	lowerParams := strings.ToLower(params)
-	return strings.Contains(lowerParams, "username=") &&
-		strings.Contains(lowerParams, "uri=") &&
-		strings.Contains(lowerParams, "nonce=") &&
-		strings.Contains(lowerParams, "response=")
+func isPOCDigestAuthAccepted(params string, method string) bool {
+	dp := parseDigestParams(params)
+
+	username := dp["username"]
+	realm := dp["realm"]
+	nonce := dp["nonce"]
+	uri := dp["uri"]
+	nc := dp["nc"]
+	cnonce := dp["cnonce"]
+	qop := dp["qop"]
+	response := dp["response"]
+	algorithm := strings.ToUpper(dp["algorithm"])
+
+	if username == "" || nonce == "" || uri == "" || response == "" {
+		return false
+	}
+
+	if algorithm != "SHA-256" && algorithm != "" {
+		return false
+	}
+
+	ha1 := sha256Hex(fmt.Sprintf("%s:%s:%s", username, realm, expectedPassword))
+	ha2 := sha256Hex(fmt.Sprintf("%s:%s", method, uri))
+
+	var expected string
+	if qop == "auth" || qop == "auth-int" {
+		expected = sha256Hex(fmt.Sprintf("%s:%s:%s:%s:%s:%s", ha1, nonce, nc, cnonce, qop, ha2))
+	} else {
+		expected = sha256Hex(fmt.Sprintf("%s:%s:%s", ha1, nonce, ha2))
+	}
+
+	return subtle.ConstantTimeCompare([]byte(strings.ToLower(response)), []byte(expected)) == 1
+}
+
+func parseDigestParams(params string) map[string]string {
+	result := make(map[string]string)
+	for _, part := range strings.Split(params, ",") {
+		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
+		if !ok {
+			continue
+		}
+		result[strings.TrimSpace(strings.ToLower(key))] = strings.Trim(strings.TrimSpace(value), "\"")
+	}
+	return result
+}
+
+func sha256Hex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
 }
 
 func detectAuthScheme(header string) string {
@@ -352,7 +397,7 @@ func buildGetServicesResponse(scheme, host string, includeCapabilities bool) str
 				<tds:Capabilities>
 					<tds:Capabilities>
 						<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
-						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
+						<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="SHA-256" />
 						<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="true" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
 						<tds:Misc AuxiliaryCommands="" />
 					</tds:Capabilities>
@@ -456,7 +501,7 @@ func buildGetServiceCapabilitiesResponse() string {
 		<tds:GetServiceCapabilitiesResponse>
 			<tds:Capabilities>
 				<tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" Dot1XConfigurations="0" HostnameFromDHCP="false" NTP="0" DHCPv6="false" />
-				<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="MD5,SHA-256" />
+				<tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="false" HttpDigest="true" RELToken="false" JsonWebToken="false" SupportedEAPMethods="" MaxUsers="1" MaxUserNameLength="0" MaxPasswordLength="0" SecurityPolicies="" MaxPasswordHistory="0" HashingAlgorithms="SHA-256" />
 				<tds:System DiscoveryResolve="false" DiscoveryBye="false" RemoteDiscovery="true" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false" HttpFirmwareUpgrade="false" HttpSystemBackup="false" HttpSystemLogging="false" HttpSupportInformation="false" StorageConfiguration="false" MaxStorageConfigurations="0" StorageConfigurationRenewal="false" GeoLocationEntries="1" AutoGeo="" StorageTypesSupported="" DiscoveryNotSupported="true" NetworkConfigNotSupported="true" UserConfigNotSupported="true" Addons="" HardwareType="Camera" />
 				<tds:Misc AuxiliaryCommands="" />
 			</tds:Capabilities>
